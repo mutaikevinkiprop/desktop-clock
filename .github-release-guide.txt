@@ -1,0 +1,113 @@
+﻿# GitHub Release Checklist
+
+## Your repository is ready!
+
+Repository: https://github.com/mutaikevinkiprop/desktop-clock
+
+### ✅ What's Complete
+
+- README.md (7.7 KB) — Full documentation
+- LICENSE (MIT) — Proper licensing
+- Source code (78 files) — All components
+- Build artifacts — Ready to upload
+
+### 🎯 Next Step: Create a Release
+
+1. Go to: https://github.com/mutaikevinkiprop/desktop-clock/releases/new
+
+2. Fill in the form:
+   
+   **Tag version:** v1.0.0
+   
+   **Release title:** Desktop Clock v1.0.0
+   
+   **Description:** (copy below)
+
+---
+
+## Release Description (Copy This):
+
+```
+# Desktop Clock v1.0.0
+
+A lightweight, beautiful digital clock widget for Windows.
+
+## ✨ Features
+
+- ⏰ Real-time clock display
+- 🌍 Multiple timezone support
+- 🎨 Fully customizable appearance
+- 📍 Precise multi-monitor positioning
+- ⌨️ Global hotkey support
+- 🚀 Optional launch-at-startup
+- 💾 Lightweight and fast
+- 🔒 Privacy-first (no data collection)
+
+## 📥 Download
+
+Choose one installer:
+
+- **Desktop Clock_1.0.0_x64_en-US.msi** — Windows Installer (Recommended)
+- **Desktop Clock_1.0.0_x64-setup.exe** — NSIS Installer (Alternative)
+
+Both are per-user, no admin required, ~200 MB total size.
+
+## 🚀 Quick Start
+
+1. Download and run the installer
+2. Clock appears on your desktop
+3. Right-click system tray icon for settings
+4. Customize appearance, timezones, and behavior
+
+## 💻 System Requirements
+
+- Windows 10 (1809+) or Windows 11
+- x64 architecture
+- ~200 MB disk space
+
+## 🔒 Privacy
+
+- ✅ No data collection
+- ✅ No network connections
+- ✅ No telemetry
+- ✅ Settings stored locally only
+
+[Full Privacy Policy](https://github.com/mutaikevinkiprop/desktop-clock/blob/main/store/PRIVACY.md)
+
+## 📝 License
+
+MIT License — Free for personal and commercial use.
+[See LICENSE file](https://github.com/mutaikevinkiprop/desktop-clock/blob/main/LICENSE)
+
+## 📚 Documentation
+
+- [README](https://github.com/mutaikevinkiprop/desktop-clock/blob/main/README.md) — Features and guide
+- [Privacy Policy](https://github.com/mutaikevinkiprop/desktop-clock/blob/main/store/PRIVACY.md)
+
+---
+
+Built with Tauri + React • [View Source](https://github.com/mutaikevinkiprop/desktop-clock)
+```
+
+3. **Upload the installers:**
+   - Drag these two files to the "Attach binaries" area:
+     - src-tauri/target/release/bundle/msi/Desktop Clock_1.0.0_x64_en-US.msi
+     - src-tauri/target/release/bundle/nsis/Desktop Clock_1.0.0_x64-setup.exe
+
+4. **Publish** ✅
+
+---
+
+## Final URLs
+
+After publishing the release:
+
+- **Latest Release:** https://github.com/mutaikevinkiprop/desktop-clock/releases/latest
+- **All Releases:** https://github.com/mutaikevinkiprop/desktop-clock/releases
+- **Repository:** https://github.com/mutaikevinkiprop/desktop-clock
+
+Users can download from the Releases page!
+
+---
+
+You're all set. Go create the release! 🚀
