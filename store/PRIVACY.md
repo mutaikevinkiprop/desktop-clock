@@ -37,4 +37,4 @@ App and its stored preferences.
 If this policy changes, the updated version will be published at the same URL.
 
 ## Contact
-Publisher contact: <TO BE PROVIDED BY PUBLISHER>
+Publisher contact: mutaikevinkiprop@gmail.com
