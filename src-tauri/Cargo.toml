@@ -1,0 +1,36 @@
+[package]
+name = "desktop-clock"
+version = "1.0.0"
+description = "A polished desktop digital clock widget for Windows"
+authors = ["Desktop Clock"]
+edition = "2021"
+rust-version = "1.77"
+
+# The `_lib` suffix avoids a name collision with the binary on Windows.
+[lib]
+name = "desktop_clock_lib"
+crate-type = ["staticlib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri-plugin-store = "2"
+tauri-plugin-os = "2"
+tauri-plugin-process = "2"
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-autostart = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[features]
+# This feature is used for production builds or when a dev server is not specified.
+custom-protocol = ["tauri/custom-protocol"]
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

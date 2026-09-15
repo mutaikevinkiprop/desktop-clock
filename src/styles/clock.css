@@ -1,0 +1,327 @@
+/* ==========================================================================
+   Clock widget styles
+   ========================================================================== */
+
+.clock-root {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  box-sizing: border-box;
+}
+
+.clock-face {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--clock-size) * 0.06);
+  background: var(--clock-bg);
+  color: var(--clock-text);
+  border: var(--clock-border-width) solid var(--clock-border);
+  border-radius: var(--clock-radius);
+  padding: var(--clock-padding);
+  box-shadow: var(--clock-shadow);
+  backdrop-filter: blur(var(--clock-blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--clock-blur)) saturate(140%);
+  transition:
+    background var(--transition, 320ms) ease,
+    color var(--transition, 320ms) ease,
+    border-color var(--transition, 320ms) ease,
+    border-radius var(--transition, 320ms) ease,
+    box-shadow var(--transition, 320ms) ease,
+    padding var(--transition, 320ms) ease,
+    backdrop-filter var(--transition, 320ms) ease;
+  overflow: hidden;
+  container-type: size;
+}
+
+.clock-face[data-glow="true"] {
+  text-shadow: var(--clock-glow);
+}
+
+.clock-time {
+  display: flex;
+  align-items: baseline;
+  gap: calc(var(--clock-size) * 0.06);
+  font-family: var(--clock-font);
+  /* Cap the configured size by the container height so the clock shrinks
+     to fit instead of being clipped when the widget is smaller. */
+  font-size: min(var(--clock-size), 40cqh);
+  font-weight: var(--clock-weight);
+  letter-spacing: var(--clock-tracking);
+  line-height: var(--clock-line-height);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  transition: font-size 200ms ease, color var(--transition, 320ms) ease;
+}
+
+.clock-time__seconds {
+  font-size: 0.62em;
+  opacity: 0.72;
+  font-weight: calc(var(--clock-weight) - 100);
+}
+
+.clock-time__meridiem {
+  font-size: 0.34em;
+  opacity: 0.78;
+  letter-spacing: 0.04em;
+  font-weight: 500;
+  transform: translateY(-0.15em);
+}
+
+.clock-date {
+  font-family: var(--clock-font);
+  font-size: calc(var(--clock-size) * 0.2);
+  font-weight: 500;
+  letter-spacing: calc(var(--clock-tracking) + 1px);
+  color: var(--clock-text-dim);
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition: font-size 200ms ease, color var(--transition, 320ms) ease;
+}
+
+.clock-zones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--clock-size) * 0.14) calc(var(--clock-size) * 0.28);
+  justify-content: center;
+  align-items: center;
+  margin-top: calc(var(--clock-size) * 0.02);
+  max-width: 100%;
+  transition: opacity 200ms ease;
+}
+
+.clock-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-family: var(--clock-font);
+  font-variant-numeric: tabular-nums;
+}
+
+.clock-zone__label {
+  font-size: calc(var(--clock-size) * 0.13);
+  letter-spacing: 0.08em;
+  color: var(--clock-text-faint);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.clock-zone__time {
+  font-size: calc(var(--clock-size) * 0.26);
+  font-weight: 600;
+  color: var(--clock-text);
+  letter-spacing: var(--clock-tracking);
+}
+
+.clock-zone__offset {
+  font-size: calc(var(--clock-size) * 0.11);
+  color: var(--clock-accent);
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+/* Resize affordances: edge and corner grips, shown on hover. */
+.clock-resize-handle {
+  position: absolute;
+  opacity: 0;
+  transition: opacity 160ms ease;
+  z-index: 2;
+  touch-action: none;
+}
+.clock-face:hover .clock-resize-handle {
+  opacity: 0.55;
+}
+
+/* Right edge: full-height strip that adjusts width. */
+.clock-resize-handle--e {
+  top: 8px;
+  bottom: 26px;
+  right: 0;
+  width: 6px;
+  cursor: ew-resize;
+}
+
+/* Bottom edge: full-width strip that adjusts height. */
+.clock-resize-handle--s {
+  left: 8px;
+  right: 26px;
+  bottom: 0;
+  height: 6px;
+  cursor: ns-resize;
+}
+
+/* Bottom-right corner: 22x22 grip that adjusts both dimensions. */
+.clock-resize-handle--se {
+  right: 0;
+  bottom: 0;
+  width: 22px;
+  height: 22px;
+  cursor: nwse-resize;
+  border-bottom-right-radius: var(--clock-radius);
+}
+.clock-resize-handle--se::after {
+  content: "";
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+  width: 9px;
+  height: 9px;
+  border-right: 2px solid var(--clock-text);
+  border-bottom: 2px solid var(--clock-text);
+  opacity: 0.7;
+}
+
+.clock-drag-region {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+.clock-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--clock-size) * 0.06);
+  width: 100%;
+  pointer-events: none;
+}
+
+/* Container-query driven adaptations: the clock stays balanced at any size. */
+@container (max-width: 320px) {
+  .clock-zones {
+    flex-direction: column;
+    gap: 4px;
+  }
+}
+
+@container (max-height: 140px) {
+  .clock-date {
+    display: none;
+  }
+}
+
+/* On short widgets the fixed padding would crowd the digits, so scale it
+   down. This keeps the clock fully visible at very small heights. */
+@container (max-height: 160px) {
+  .clock-face {
+    padding: calc(var(--clock-padding) * 0.5);
+  }
+}
+@container (max-height: 110px) {
+  .clock-face {
+    padding: calc(var(--clock-padding) * 0.25);
+  }
+}
+/* ==========================================================================
+   Context menu
+   ========================================================================== */
+
+.context-menu {
+  position: fixed;
+  z-index: 100;
+  min-width: 208px;
+  background: rgba(22, 26, 34, 0.97);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 5px;
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.4);
+  color: #eef1f6;
+  font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  font-size: 12.5px;
+  animation: context-in 110ms cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+@keyframes context-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.context-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 7px 9px 7px 6px;
+  border-radius: 6px;
+  color: inherit;
+  text-align: left;
+  transition: background 90ms ease;
+}
+.context-menu__item:hover:not(:disabled),
+.context-menu__item:focus-visible {
+  background: rgba(255, 255, 255, 0.09);
+}
+.context-menu__item:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.context-menu__item--danger {
+  color: #ff8f8f;
+}
+.context-menu__item--danger:hover {
+  background: rgba(255, 110, 110, 0.14);
+}
+
+.context-menu__check {
+  width: 15px;
+  flex-shrink: 0;
+  text-align: center;
+  color: #6f9bff;
+  font-size: 11px;
+}
+
+.context-menu__chevron {
+  margin-left: auto;
+  opacity: 0.55;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.context-menu__sep {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 5px 6px;
+}
+
+.context-menu__submenu {
+  position: relative;
+}
+
+.context-menu__flyout {
+  position: absolute;
+  left: calc(100% + 4px);
+  top: -5px;
+  min-width: 208px;
+  background: rgba(22, 26, 34, 0.97);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 5px;
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.55);
+  animation: context-in 110ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.clock-face-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
