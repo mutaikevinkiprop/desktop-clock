@@ -48,3 +48,7 @@ src-tauri/gen/
 *.tmp
 *.temp
 $RECYCLE.BIN/
+
+#Release notes
+RELEASE_NOTES.txt
+.github-release-guide.txt
