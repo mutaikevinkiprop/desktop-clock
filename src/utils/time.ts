@@ -76,12 +76,21 @@ export function getTimeParts(
   const tz = timeZone ? { timeZone } : {};
 
   const hourFmt = getFormatter(loc, { ...tz, hour: "2-digit", hour12: format === "12" });
-  const minuteFmt = getFormatter(loc, { ...tz, minute: "2-digit" });
-  const secondFmt = getFormatter(loc, { ...tz, second: "2-digit" });
+  // A COMBINED formatter is required for zero-padded minutes/seconds: V8
+  // resolves a lone minute/second "2-digit" request down to "numeric" (no
+  // leading zero). With hour included, every field is padded ("02:01:07").
+  const timeFmt = getFormatter(loc, {
+    ...tz,
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
   const hour12Fmt = getFormatter(loc, { ...tz, hour: "numeric", hour12: true });
 
   let hours = safePart(hourFmt, date);
-  const minutes = safePart(minuteFmt, date);
+  // Minutes and seconds keep their two-digit zero padding: 00, 01, 02, ...
+  const minutes = safePart(timeFmt, date, "minute");
 
   let meridiem = "";
   if (format === "12") {
@@ -98,7 +107,7 @@ export function getTimeParts(
     hours = pad(dateToZonedHour(date, timeZone));
   }
 
-  const seconds = showSeconds ? safePart(secondFmt, date) : "";
+  const seconds = showSeconds ? safePart(timeFmt, date, "second") : "";
 
   return {
     hours,
@@ -196,15 +205,21 @@ function pad(n: number): string {
   return n < 10 ? `0${n}` : String(n);
 }
 
-function safePart(fmt: Intl.DateTimeFormat, date: Date): string {
+function safePart(
+  fmt: Intl.DateTimeFormat,
+  date: Date,
+  kind?: "hour" | "minute" | "second" | "day",
+): string {
   try {
     const parts = fmt.formatToParts(date);
     for (const p of parts) {
       if (
-        p.type === "hour" ||
-        p.type === "minute" ||
-        p.type === "second" ||
-        p.type === "day"
+        kind
+          ? p.type === kind
+          : p.type === "hour" ||
+            p.type === "minute" ||
+            p.type === "second" ||
+            p.type === "day"
       ) {
         return p.value;
       }

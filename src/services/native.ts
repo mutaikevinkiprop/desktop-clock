@@ -33,7 +33,10 @@ async function getInvoke(): Promise<InvokeFn | null> {
 /** Invoke a native command, returning `fallback` when unavailable. */
 async function call<T>(cmd: string, args: Record<string, unknown> | undefined, fallback: T): Promise<T> {
   const invoke = await getInvoke();
-  if (!invoke) return fallback;
+  if (!invoke) {
+    console.warn(`[native] ${cmd} skipped: IPC bridge unavailable (not in Tauri?)`);
+    return fallback;
+  }
   try {
     return await invoke<T>(cmd, args);
   } catch (error) {
@@ -58,6 +61,9 @@ export const closeSettings = () => call<void>("close_settings", undefined, undef
 export const centerWindow = (monitor: string) =>
   call<Rect | null>("center_window", { monitor }, null);
 
+export const alignTopWindow = (monitor: string) =>
+  call<Rect | null>("align_top_center", { monitor }, null);
+
 export const computeCenter = (monitor: string) =>
   call<Rect | null>("compute_center", { monitor }, null);
 
@@ -68,8 +74,18 @@ export const ensureOnScreen = () => call<Rect | null>("ensure_on_screen", undefi
 export const getWidgetRect = () =>
   call<Rect | null>("get_widget_rect", undefined, null);
 
-export const setWidgetPosition = (x: number, y: number) =>
-  call<void>("set_widget_position", { x, y }, undefined);
+/**
+ * Restore the widget to a saved PHYSICAL position in one atomic call: the
+ * backend moves the window and then validates the *requested* rect against the
+ * monitor layout (no read-back, which could race the asynchronous move and
+ * miss an off-screen restore). Off-screen spots are slid back onto the nearest
+ * monitor, and the final rect is returned for persistence.
+ *
+ * `legacy` marks coordinates written by settings v1 (logical px) so the
+ * backend can convert them with the correct monitor scale factor.
+ */
+export const restoreWidgetPosition = (x: number, y: number, legacy = false) =>
+  call<Rect | null>("restore_widget_position", { x, y, legacy }, null);
 
 export const setWidgetSize = (width: number, height: number) =>
   call<void>("set_widget_size", { width, height }, undefined);
@@ -105,6 +121,73 @@ export const setCenterTarget = (target: string) =>
   call<void>("set_center_target", { target }, undefined);
 
 export const quitApp = () => call<void>("quit_app", undefined, undefined);
+
+// --- Floating contribution widget -----------------------------------------
+
+/** Show the floating contribution widget (fitted, never focused). */
+export const showContrib = () => call<void>("show_contrib", undefined, undefined);
+
+/** Hide the floating contribution widget. */
+export const hideContrib = () => call<void>("hide_contrib", undefined, undefined);
+
+/** Show/hide the contribution widget in one call (never focuses it). When
+ *  showing, the clock is raised back above the grid. */
+export const syncContrib = (visible: boolean, keepClockOnTop = false) =>
+  call<void>("sync_contrib", { visible, keep_clock_on_top: keepClockOnTop }, undefined);
+
+/**
+ * Fit the contribution widget to the fixed full-width band on its monitor.
+ * `monitor` accepts the same keys as `centerWindow` and defaults to the
+ * monitor the window currently lives on.
+ */
+export const fitContribToMonitor = (monitor?: string) =>
+  call<Rect | null>("fit_contrib_to_monitor", { monitor }, null);
+
+/**
+ * Fit the contribution band to the monitor the CLOCK is currently on, so the
+ * graph always follows the clock - including when a display change (lid
+ * closed, "Second screen only") relocates the clock.
+ */
+export const fitContribToClockMonitor = () =>
+  call<Rect | null>("fit_contrib_to_clock", undefined, null);
+
+/** The contribution widget's outer rect (physical px). */
+export const getContribRect = () =>
+  call<Rect | null>("get_contrib_rect", undefined, null);
+
+/** The contribution widget's monitor scale factor. */
+export const getContribScale = () =>
+  call<number>("get_contrib_scale", undefined, 1);
+
+/** Center the contribution widget on a monitor key (fits the fixed band). */
+export const centerContrib = (monitor: string) =>
+  call<Rect | null>("center_contrib", { monitor }, null);
+
+/** Ensure the contribution widget is visible on some monitor (re-fits it). */
+export const ensureContribOnScreen = () =>
+  call<Rect | null>("ensure_contrib_on_screen", undefined, null);
+
+// --- GitHub contributions --------------------------------------------------
+
+/** A single day in the contribution grid. */
+export interface ContributionDay {
+  date: string;
+  count: number;
+  level: number;
+}
+
+/** The contribution graph returned by the backend. */
+export interface ContributionGraph {
+  username: string;
+  total: number;
+  longest_streak: number;
+  current_streak: number;
+  days: ContributionDay[];
+}
+
+/** Fetch a GitHub user's contribution graph (public profiles, no auth). */
+export const getContributions = (username: string) =>
+  call<ContributionGraph | null>("get_contributions", { username }, null);
 
 // --- Window dragging -------------------------------------------------------
 

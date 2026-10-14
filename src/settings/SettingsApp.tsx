@@ -9,6 +9,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSettings } from "../services/settingsStore";
 import Logo from "../components/Logo";
 import ClockSection from "./sections/ClockSection";
+import ContributionsSection from "./sections/ContributionsSection";
 import AppearanceSection from "./sections/AppearanceSection";
 import TypographySection from "./sections/TypographySection";
 import TimezonesSection from "./sections/TimezonesSection";
@@ -19,6 +20,7 @@ import AboutSection from "./sections/AboutSection";
 
 export type SectionId =
   | "clock"
+  | "contributions"
   | "appearance"
   | "typography"
   | "timezones"
@@ -42,6 +44,13 @@ export const SECTIONS: NavItem[] = [
     title: "Clock",
     description: "Time format and what the clock displays.",
     icon: "M12 8v4l3 2M12 3a9 9 0 100 18 9 9 0 000-18z",
+  },
+  {
+    id: "contributions",
+    label: "Contributions",
+    title: "Contribution widget",
+    description: "A floating GitHub-style contribution grid on your desktop.",
+    icon: "M4 4h4v4H4zM10 4h4v4h-4zM16 4h4v4h-4zM4 10h4v4H4zM10 10h4v4h-4zM16 13h4v4h-4zM4 16h4v4H4zM10 19h4v4h-4z",
   },
   {
     id: "appearance",
@@ -149,7 +158,7 @@ export default function SettingsApp() {
           ))}
         </nav>
 
-        <div style={{ marginTop: "auto", padding: "12px 10px 4px" }}>
+        <div style={{ marginTop: "auto", padding: "12px 0 0" }}>
           <button
             className="ui-button"
             style={{ width: "100%" }}
@@ -172,6 +181,7 @@ export default function SettingsApp() {
 
         <div className="settings-content" key={active}>
           {active === "clock" && <ClockSection />}
+          {active === "contributions" && <ContributionsSection />}
           {active === "appearance" && <AppearanceSection />}
           {active === "typography" && <TypographySection />}
           {active === "timezones" && <TimezonesSection />}

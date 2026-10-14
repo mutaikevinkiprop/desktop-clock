@@ -1,0 +1,88 @@
+/* ==========================================================================
+   Contribution widget styles
+   A fully transparent floating overlay; ONLY the grid squares (and the
+   optional headline) are visible. The squares sit flush against the left and
+   right edges of the viewport with no margins, padding or gaps around the
+   grid, and the background has no image, colour, gradient or overlay.
+   ========================================================================== */
+
+.contrib-root {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+}
+
+/* Transparent container for the headline + canvas. Kept fully transparent:
+   only the drawn squares are visible. The container-type keeps the
+   headline's cqh font sizes resolving against this box. */
+.contrib-card {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  container-type: size;
+}
+
+/* Headline sits in the top band; the grid is centred in the space below.
+   Colours come from the same theme variables the clock uses, so the grid
+   headline always matches the clock's colour. The type is sized from the
+   container height (cqh) and kept smaller than the band so the text always
+   has breathing room from the window's top edge - never clipped, at any
+   monitor resolution or scaling. */
+.contrib-headline {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 20%;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  text-align: center;
+  pointer-events: none;
+  font-family: "Cascadia Code", Consolas, "Courier New", monospace;
+  color: var(--clock-text);
+  text-shadow: 0 0 10px var(--clock-accent-glow);
+}
+.contrib-headline .contrib-user {
+  font-size: clamp(9px, 3cqh, 14px);
+  letter-spacing: 0.18em;
+  /* Compensate the trailing letter-space so the text sits optically
+     centred (letter-spacing adds space after the last glyph). */
+  padding-left: 0.18em;
+  opacity: 0.85;
+  text-transform: uppercase;
+}
+.contrib-headline .contrib-total {
+  font-size: clamp(16px, 9cqh, 44px);
+  line-height: 1;
+  letter-spacing: 0.1em;
+  padding-left: 0.1em;
+  font-weight: 700;
+}
+.contrib-headline .contrib-sub {
+  font-size: clamp(8px, 2.6cqh, 12px);
+  letter-spacing: 0.16em;
+  padding-left: 0.16em;
+  opacity: 0.65;
+}
+
+/* The canvas fills the whole viewport edge-to-edge (no margins/padding). */
+.contrib-canvas-wrap {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+.contrib-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}

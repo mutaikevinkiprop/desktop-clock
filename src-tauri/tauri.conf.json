@@ -10,7 +10,7 @@
     "frontendDist": "../dist"
   },
   "app": {
-    "withGlobalTauri": false,
+    "withGlobalTauri": true,
     "windows": [
       {
         "label": "main",
@@ -29,6 +29,25 @@
         "center": false,
         "visible": false,
         "focus": true,
+        "dragDropEnabled": true
+      },
+      {
+        "label": "contrib",
+        "title": "Contribution Grid",
+        "url": "index.html?window=contrib",
+        "width": 1280,
+        "height": 320,
+        "resizable": false,
+        "maximizable": false,
+        "minimizable": false,
+        "decorations": false,
+        "transparent": true,
+        "shadow": false,
+        "alwaysOnTop": false,
+        "skipTaskbar": true,
+        "center": false,
+        "visible": false,
+        "focus": false,
         "dragDropEnabled": true
       },
       {

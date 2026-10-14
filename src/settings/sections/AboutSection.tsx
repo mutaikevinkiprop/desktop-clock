@@ -31,7 +31,7 @@ export default function AboutSection() {
         </div>
       </div>
 
-      <section className="settings-section" style={{ marginTop: 24 }}>
+      <section className="settings-section" style={{ marginTop: 30 }}>
         <h2 className="settings-section__title">Environment</h2>
         <div className="settings-panel">
           <div className="settings-row">

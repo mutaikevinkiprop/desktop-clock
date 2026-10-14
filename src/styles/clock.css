@@ -10,10 +10,15 @@
   justify-content: center;
   padding: 6px;
   box-sizing: border-box;
+  /* Keep the clock above anything else rendered in the widget surface. */
+  position: relative;
+  z-index: 1;
+  isolation: isolate;
 }
 
 .clock-face {
   position: relative;
+  z-index: 1;
   width: 100%;
   height: 100%;
   display: flex;
@@ -36,9 +41,25 @@
     border-radius var(--transition, 320ms) ease,
     box-shadow var(--transition, 320ms) ease,
     padding var(--transition, 320ms) ease,
-    backdrop-filter var(--transition, 320ms) ease;
+    backdrop-filter var(--transition, 320ms) ease,
+    transform var(--transition, 320ms) ease;
   overflow: hidden;
   container-type: size;
+}
+
+
+
+/* A barely-perceptible "breathing" scale accompanies the halo pulse. */
+.clock-face[data-pulse="true"] {
+  animation: clock-breathe 3.4s ease-in-out infinite;
+}
+@keyframes clock-breathe {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.004);
+  }
 }
 
 .clock-face[data-glow="true"] {
@@ -58,7 +79,14 @@
   line-height: var(--clock-line-height);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-  transition: font-size 200ms ease, color var(--transition, 320ms) ease;
+  /* High-contrast halo keeps the digits legible on light AND dark
+     backgrounds; the neon glow joins it when enabled. */
+  text-shadow: var(--clock-contrast);
+  transition: font-size 200ms ease, color var(--transition, 320ms) ease,
+    text-shadow var(--transition, 320ms) ease;
+}
+.clock-face[data-glow="true"] .clock-time {
+  text-shadow: var(--clock-contrast), var(--clock-glow);
 }
 
 .clock-time__seconds {
@@ -182,7 +210,12 @@
 .clock-drag-region {
   position: absolute;
   inset: 0;
-  z-index: 0;
+  /* Must sit ABOVE the clock face (which fills the whole wrapper and would
+     otherwise swallow every pointer event) so the entire widget surface is
+     draggable. The resize handles keep the same z-index and come later in
+     the DOM, so they still stack on top. */
+  z-index: 2;
+  touch-action: none;
 }
 .clock-content {
   position: relative;
@@ -195,7 +228,6 @@
   width: 100%;
   pointer-events: none;
 }
-
 /* Container-query driven adaptations: the clock stays balanced at any size. */
 @container (max-width: 320px) {
   .clock-zones {
@@ -324,4 +356,7 @@
   position: relative;
   width: 100%;
   height: 100%;
+  /* Stacking order inside the widget: drag layer below, clock above, the
+     context menu (fixed, z-index 100) stays on top of everything. */
+  z-index: 1;
 }

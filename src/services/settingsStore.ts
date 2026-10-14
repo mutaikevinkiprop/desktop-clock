@@ -11,7 +11,12 @@
 
 import { create } from "zustand";
 import type { MonitorInfo, Settings, ThemeId, TimezoneClock } from "../types";
-import { createDefaultSettings, sanitizeSettings, applyThemeValues } from "../settings/defaults";
+import {
+  createDefaultSettings,
+  sanitizeSettings,
+  applyThemeValues,
+  SETTINGS_VERSION,
+} from "../settings/defaults";
 import { loadSettings, saveSettings } from "./persistence";
 import { broadcastSettings } from "./trayEvents";
 import * as native from "./native";
@@ -37,7 +42,11 @@ interface SettingsState {
   moveClock: (id: string, direction: -1 | 1) => void;
 
   refreshMonitors: () => Promise<void>;
+  /** Replace the cached monitor list (used by the display-change watcher). */
+  setMonitors: (monitors: MonitorInfo[]) => void;
   centerNow: () => Promise<void>;
+  /** Apply the current position preset ("center" or "top") right away. */
+  positionNow: () => Promise<void>;
   centerOnStartupIfEnabled: () => Promise<void>;
   saveCurrentPosition: () => Promise<void>;
 
@@ -109,6 +118,7 @@ const NATIVE_EFFECTS: Record<keyof Settings, NativeEffect | undefined> = {
   shadowStrength: undefined,
   glowEnabled: undefined,
   glowStrength: undefined,
+  pulseEnabled: undefined,
   fontFamily: undefined,
   fontSize: undefined,
   fontWeight: undefined,
@@ -123,9 +133,40 @@ const NATIVE_EFFECTS: Record<keyof Settings, NativeEffect | undefined> = {
   showShadow: undefined,
   widgetSize: undefined,
   widgetVisible: undefined,
+  // Changing the hacker mode/colour also restyles the contribution widget.
+  hackerMode: (s) => applyContributionNative(s),
+  hackerSync: undefined,
+  hackerFixedId: (s) => applyContributionNative(s),
+  hackerPaletteSource: (s) => applyContributionNative(s),
+  hackerCustomColors: (s) => applyContributionNative(s),
+  hackerFixedColor: (s) => applyContributionNative(s),
+  hackerRotateSeconds: (s) => applyContributionNative(s),
+  // The contributions block includes the typable GitHub username; the widget
+  // window reloads from the store on its own, so no debounce is needed here.
+  contributions: (s) => applyContributionNative(s),
   version: undefined,
   localZone: undefined,
 };
+
+/**
+ * Show or hide the floating contribution widget to match the settings.
+ *
+ * The widget window renders from the shared settings store, so we only need to
+ * toggle its visibility and fit its fixed full-width band here. Fitting and
+ * showing never focus the window, so editing settings can never raise the
+ * widget above the settings window.
+ */
+async function applyContributionNative(s: Settings): Promise<void> {
+  if (!s.contributions.enabled) {
+    await native.hideContrib();
+    return;
+  }
+  // The band lives with the clock: fit it to the monitor the clock is on.
+  await native.fitContribToClockMonitor();
+  // Showing the grid raises the clock back above it (respecting the user's
+  // always-on-top preference), so the grid never covers the clock.
+  await native.syncContrib(true, s.alwaysOnTop);
+}
 
 export const useSettings = create<SettingsState>((setState, get) => ({
   settings: createDefaultSettings(),
@@ -141,7 +182,19 @@ export const useSettings = create<SettingsState>((setState, get) => ({
 
   update: (patch) => {
     const previous = get().settings;
-    const next = sanitizeSettings({ ...previous, ...patch });
+    let next = sanitizeSettings({ ...previous, ...patch });
+
+    // Editing a colour means the user wants THEIR colours: disable the
+    // hacker-sync override so the edit is visible immediately instead of
+    // being masked by the pinned/rotating palette colour.
+    const colourEdited =
+      ("textColor" in patch && patch.textColor !== previous.textColor) ||
+      ("accentColor" in patch && patch.accentColor !== previous.accentColor) ||
+      ("backgroundColor" in patch && patch.backgroundColor !== previous.backgroundColor);
+    if (colourEdited && next.hackerMode !== "off") {
+      next = { ...next, hackerMode: "off" };
+    }
+
     setState({ settings: next });
     persist(next);
 
@@ -172,7 +225,14 @@ export const useSettings = create<SettingsState>((setState, get) => ({
   },
 
   applyTheme: (theme) => {
-    const next = applyThemeValues(get().settings, theme);
+    // A selected theme owns the colours: disable the hacker-sync override so
+    // the theme's palette actually reaches the clock and the contribution
+    // grid. (The user can re-enable hacker sync afterwards if they want the
+    // palette colour to take over again.)
+    const next = {
+      ...applyThemeValues(get().settings, theme),
+      hackerMode: "off" as const,
+    };
     setState({ settings: next });
     persist(next);
   },
@@ -214,43 +274,91 @@ export const useSettings = create<SettingsState>((setState, get) => ({
     setState({ monitors });
   },
 
+  setMonitors: (monitors) => {
+    setState({ monitors });
+  },
+
   centerNow: async () => {
     const { settings } = get();
     await native.centerWindow(settings.monitor);
     await get().saveCurrentPosition();
   },
 
+  positionNow: async () => {
+    const { settings } = get();
+    if (settings.positionMode === "top") {
+      await native.alignTopWindow(settings.monitor);
+    } else {
+      await native.centerWindow(settings.monitor);
+    }
+    await get().saveCurrentPosition();
+  },
+
   centerOnStartupIfEnabled: async () => {
     const { settings } = get();
-    if (settings.centerOnStartup) {
+    // Preset modes place the clock deterministically: "center" (only when
+    // auto-centering is enabled) and "top" (always, since it is an explicit
+    // preset). A dragged clock (custom position) must stay exactly where the
+    // user put it across launches.
+    const wantCenter = settings.centerOnStartup && settings.positionMode === "center";
+    const wantTop = settings.positionMode === "top";
+    if (wantCenter) {
       await native.centerWindow(settings.monitor);
+    } else if (wantTop) {
+      await native.alignTopWindow(settings.monitor);
     } else if (settings.savedPosition) {
-      await native.setWidgetPosition(settings.savedPosition.x, settings.savedPosition.y);
+      // Saved positions are PHYSICAL pixels. The backend restores them
+      // exactly (no DPI conversion, so mixed-scale multi-monitor setups
+      // cannot drift) and validates the requested rect against the monitor
+      // layout in the SAME call. Validating the request instead of reading
+      // the window back closes the race where an off-screen restore slipped
+      // past the guard and left the clock invisible.
+      const finalRect = await native.restoreWidgetPosition(
+        settings.savedPosition.x,
+        settings.savedPosition.y,
+        settings.version < 2, // settings v1 stored logical pixels
+      );
+      if (finalRect) {
+        setState({
+          settings: {
+            ...get().settings,
+            savedPosition: { x: finalRect.x, y: finalRect.y },
+            version: SETTINGS_VERSION,
+          },
+        });
+        persist(get().settings);
+      }
+      return;
     }
-    // Guard against a saved position that is now off-screen (monitor removed,
-    // resolution changed, DPI changed).
-    const rect = await native.ensureOnScreen();
-    // Re-center if the guard had to relocate a centered clock.
-    if (rect && settings.positionMode === "center" && settings.centerOnStartup) {
+    // Guard against a preset spot that is now off-screen (monitor removed,
+    // resolution changed, DPI changed); preset targets are recomputed from
+    // live monitor data, so this only matters when a target no longer exists.
+    await native.ensureOnScreen();
+    if (wantCenter) {
       await native.centerWindow(settings.monitor);
+    } else if (wantTop) {
+      await native.alignTopWindow(settings.monitor);
     }
     await get().saveCurrentPosition();
   },
 
   saveCurrentPosition: async () => {
     const { settings } = get();
-    if (settings.positionMode === "center") return;
+    // Preset modes derive their position; only custom spots are persisted.
+    if (settings.positionMode !== "custom") return;
     const rect = await native.getWidgetRect();
     if (!rect) return;
-    const scale = await native.getScaleFactor();
-    const factor = scale > 0 ? scale : 1;
+    // Physical pixels: virtual-desktop coordinates are uniform across
+    // monitors regardless of each display's scale factor, so restoring this
+    // position later needs no DPI conversion and cannot drift.
     setState({
       settings: {
         ...settings,
         savedPosition: {
-          x: Math.round(rect.x / factor),
-          y: Math.round(rect.y / factor),
+          x: rect.x,
+          y: rect.y,
         },
+        version: SETTINGS_VERSION,
       },
     });
     persist(get().settings);
@@ -258,6 +366,15 @@ export const useSettings = create<SettingsState>((setState, get) => ({
 
   applyNativeAll: async () => {
     const s = get().settings;
+
+    // Bring the contribution widget up (or down) FIRST so a failure elsewhere
+    // cannot prevent it. Each step is independently guarded.
+    try {
+      await applyContributionNative(s);
+    } catch (err) {
+      console.error("[contributions] failed:", err);
+    }
+
     await Promise.all([
       native.setAlwaysOnTop(s.alwaysOnTop),
       native.setClickThrough(s.clickThrough),

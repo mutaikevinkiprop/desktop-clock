@@ -15,6 +15,7 @@ import ContextMenu from "./ContextMenu";
 import { useSettings } from "../services/settingsStore";
 import { applyThemeVariables } from "../services/themeApply";
 import { useClock } from "../utils/useClock";
+import { useEffectiveThemeColors } from "../utils/useEffectiveThemeColors";
 import * as native from "../services/native";
 import { useResize } from "../utils/useResize";
 
@@ -26,10 +27,21 @@ export default function ClockWidget() {
   // Tick at second resolution only when seconds are visible, otherwise per minute.
   const now = useClock(settings.showSeconds ? "second" : "minute");
 
+  // --- Hacker sync ----------------------------------------------------------
+  // "rotate" recolours the clock every minute (in step with the wallpaper);
+  // "fixed" pins a single palette colour. Both leave the user's own colours
+  // untouched when the mode is "off". Shared with the contribution widget so
+  // both always render the same colour.
+  const { textColor, accentColor } = useEffectiveThemeColors();
+
   // --- Theme variables ------------------------------------------------------
   useEffect(() => {
-    if (rootRef.current) applyThemeVariables(settings, rootRef.current);
-  }, [settings]);
+    if (!rootRef.current) return;
+    applyThemeVariables(
+      { ...settings, textColor, accentColor },
+      rootRef.current,
+    );
+  }, [settings, textColor, accentColor]);
 
   // --- Startup positioning --------------------------------------------------
   // Runs once, after settings have been hydrated from disk.
@@ -44,6 +56,53 @@ export default function ClockWidget() {
       .then(() => store.applyNativeAll());
   }, [loaded]);
 
+  // --- Display-change watcher ------------------------------------------------
+  // Windows does not notify Tauri when the monitor topology changes (docking
+  // or undocking, "Second screen only", lid closed), and per-monitor-DPI-aware
+  // windows are never auto-moved by the OS. Without this, a display switch can
+  // leave the clock stranded on a desktop that is no longer visible. Poll the
+  // monitor list cheaply and re-place the clock whenever the layout changes:
+  // preset modes re-apply their spot on the configured monitor, custom
+  // positions are slid back into view, and the contribution band is re-fit.
+  useEffect(() => {
+    if (!loaded) return;
+    let cancelled = false;
+    let lastFingerprint = "";
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    const tick = async () => {
+      if (cancelled) return;
+      try {
+        const store = useSettings.getState();
+        const monitors = await native.listMonitors();
+        const fingerprint = JSON.stringify(monitors);
+        if (fingerprint !== lastFingerprint) {
+          lastFingerprint = fingerprint;
+          store.setMonitors(monitors);
+          const { positionMode, contributions } = store.settings;
+          if (positionMode === "top" || positionMode === "center") {
+            await store.positionNow();
+          } else {
+            await native.ensureOnScreen();
+          }
+          // Keep the floating contribution band with the clock.
+          if (contributions.enabled) {
+            await native.fitContribToClockMonitor();
+          }
+        }
+      } catch {
+        /* best-effort */
+      }
+      if (!cancelled) timer = setTimeout(tick, 2500);
+    };
+
+    timer = setTimeout(tick, 2500);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [loaded]);
+
   // Reflect the stored widget size on the native window.
   useEffect(() => {
     if (!loaded) return;
@@ -56,40 +115,81 @@ export default function ClockWidget() {
     void (settings.widgetVisible ? native.showWidget() : native.hideWidget());
   }, [loaded, settings.widgetVisible]);
 
-  // --- Resize: remain centered when POSITION is "Center of screen" -----------
+  // --- Resize: remain positioned when a PRESET position mode is active -------
   const { onResizeStart } = useResize({
     enabled: settings.resizable,
     min: { width: 200, height: 90 },
     onResizeEnd: async (size) => {
       const store = useSettings.getState();
       store.update({ widgetSize: size });
-      // Requirement 14: re-center after resizing while in center mode.
+      // Requirement 14: re-position after resizing while in a preset mode.
       if (store.settings.positionMode === "center") {
         await native.centerWindow(store.settings.monitor);
+      } else if (store.settings.positionMode === "top") {
+        await native.alignTopWindow(store.settings.monitor);
       }
     },
   });
 
   // --- Drag ------------------------------------------------------------------
+  // `startDragging()` resolves immediately - the native drag loop runs on its
+  // own thread - so the final position cannot be captured with a fixed timer.
+  // Instead, a debounced `Moved` listener (below) persists the position once
+  // the window has actually stopped moving.
   const onPointerDown = useCallback(
     async (event: React.PointerEvent) => {
       if (!settings.draggable || settings.clickThrough) return;
       if ((event.target as HTMLElement).closest(".clock-resize-handle")) return;
       if (event.button !== 0) return;
       event.preventDefault();
+      const store = useSettings.getState();
+      if (store.settings.positionMode !== "custom" || store.settings.centerOnStartup) {
+        // Dragging the clock means "keep it here": switch to a custom
+        // position and stop auto-centering on the next launch.
+        store.update({ positionMode: "custom", centerOnStartup: false });
+      }
       await native.startDragging();
-      // Persist the resulting position shortly after the drag settles.
-      window.setTimeout(async () => {
-        const store = useSettings.getState();
-        if (store.settings.positionMode !== "custom") {
-          // Dragging a centered clock switches the user to a custom position.
-          store.update({ positionMode: "custom" });
-        }
-        await store.saveCurrentPosition();
-      }, 280);
     },
     [settings.draggable, settings.clickThrough],
   );
+
+  // Persist the position whenever the window settles after a move (native
+  // drag, on-screen snapping, etc.). The debounce saves only the FINAL spot.
+  useEffect(() => {
+    if (!loaded) return;
+    let unlisten: (() => void) | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { getCurrentWindow } = await import("@tauri-apps/api/window");
+        unlisten = await getCurrentWindow().onMoved(() => {
+          if (cancelled) return;
+          if (timer) clearTimeout(timer);
+          timer = setTimeout(() => {
+            const store = useSettings.getState();
+            // Center mode derives its position, so nothing to persist.
+            if (store.settings.positionMode === "custom") {
+              void store.saveCurrentPosition();
+            }
+            // The contribution band lives with the clock: after the window
+            // settles (drag, preset re-apply, display change), re-fit the
+            // band to the monitor the clock now occupies.
+            if (store.settings.contributions.enabled) {
+              void native.fitContribToClockMonitor();
+            }
+          }, 400);
+        });
+      } catch {
+        /* plain browser: no native moves to track */
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      if (unlisten) unlisten();
+    };
+  }, [loaded]);
 
   return (
     <div

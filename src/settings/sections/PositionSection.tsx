@@ -7,14 +7,49 @@ import { useEffect, useState } from "react";
 import { useSettings } from "../../services/settingsStore";
 import { Panel, RadioGroup, Row, Section, Slider, Toggle } from "../../components/Controls";
 import * as native from "../../services/native";
-import type { MonitorTarget, PositionMode } from "../../types";
+import type { MonitorInfo, MonitorTarget, PositionMode } from "../../types";
+
+const NUMBER_WORDS = [
+  "one",
+  "two",
+  "three",
+  "four",
+  "five",
+  "six",
+  "seven",
+  "eight",
+  "nine",
+  "ten",
+  "eleven",
+  "twelve",
+  "thirteen",
+  "fourteen",
+  "fifteen",
+  "sixteen",
+  "seventeen",
+  "eighteen",
+  "nineteen",
+  "twenty",
+];
+
+/** "Primary" for the primary display; "Secondary one/two/…" for the rest. */
+function monitorLabel(monitors: MonitorInfo[], m: MonitorInfo): string {
+  if (m.isPrimary) return "Primary";
+  const position = monitors
+    .filter((x) => !x.isPrimary)
+    .findIndex((x) => x.index === m.index);
+  if (position >= 0) {
+    return `Secondary ${NUMBER_WORDS[position] ?? String(position + 1)}`;
+  }
+  return `Monitor ${m.index + 1}`;
+}
 
 export default function PositionSection() {
   const settings = useSettings((s) => s.settings);
   const update = useSettings((s) => s.update);
   const monitors = useSettings((s) => s.monitors);
   const refreshMonitors = useSettings((s) => s.refreshMonitors);
-  const centerNow = useSettings((s) => s.centerNow);
+  const positionNow = useSettings((s) => s.positionNow);
 
   const [status, setStatus] = useState<string>("");
 
@@ -23,18 +58,14 @@ export default function PositionSection() {
     void refreshMonitors();
   }, [refreshMonitors]);
 
-  const describeMonitor = (index: number, isPrimary: boolean) => {
-    const m = monitors[index];
-    if (!m) return `Monitor ${index + 1}`;
-    const name = m.isPrimary ? "Primary" : m.name ?? `Monitor ${index + 1}`;
-    const label = isPrimary && !m.isPrimary ? `${name} (primary)` : name;
-    return `${label} — ${m.width}×${m.height} @ ${Math.round(m.scaleFactor * 100)}%`;
-  };
-
-  const handleCenter = async () => {
-    setStatus("Centering…");
-    await centerNow();
-    setStatus("Centered on the selected monitor.");
+  const handleApply = async () => {
+    setStatus("Applying position…");
+    await positionNow();
+    setStatus(
+      settings.positionMode === "top"
+        ? "Aligned to the top center of the selected monitor."
+        : "Centered on the selected monitor.",
+    );
     window.setTimeout(() => setStatus(""), 2600);
   };
 
@@ -62,6 +93,8 @@ export default function PositionSection() {
                 update({ monitor: value });
                 if (settings.positionMode === "center") {
                   void native.centerWindow(value);
+                } else if (settings.positionMode === "top") {
+                  void native.alignTopWindow(value);
                 }
               }}
             >
@@ -69,9 +102,7 @@ export default function PositionSection() {
               <option value="current">Current Monitor</option>
               {monitors.map((m, index) => (
                 <option key={m.index} value={`index:${index}`}>
-                  {m.name ?? `Monitor ${index + 1}`} — {m.width}×{m.height} @{" "}
-                  {Math.round(m.scaleFactor * 100)}%
-                  {m.isPrimary ? " (primary)" : ""}
+                  {monitorLabel(monitors, m)}
                 </option>
               ))}
             </select>
@@ -79,7 +110,7 @@ export default function PositionSection() {
 
           <Row
             title="Position mode"
-            description="Centered mode keeps the clock perfectly centered, even after resizing."
+            description="Centered keeps the clock at the screen center; top center pins it to the top edge. Both follow the widget size automatically."
           >
             <RadioGroup<PositionMode>
               name="positionMode"
@@ -87,17 +118,19 @@ export default function PositionSection() {
               options={[
                 { value: "custom", label: "Custom" },
                 { value: "center", label: "Center of screen" },
+                { value: "top", label: "Top center" },
               ]}
               onChange={(value) => {
                 update({ positionMode: value });
                 if (value === "center") void native.centerWindow(settings.monitor);
+                if (value === "top") void native.alignTopWindow(settings.monitor);
               }}
             />
           </Row>
 
           <Row
             title="Center on startup"
-            description="On launch, place the clock at the center of the selected display."
+            description="On launch, place the clock at its preset spot (center or top center) on the selected display."
           >
             <Toggle
               checked={settings.centerOnStartup}
@@ -110,9 +143,12 @@ export default function PositionSection() {
 
       <Section title="Actions">
         <Panel>
-          <Row title="Center Clock Now" description="Move the clock to the exact center right away.">
-            <button className="ui-button ui-button--primary" onClick={() => void handleCenter()}>
-              Center Clock Now
+          <Row
+            title="Apply position"
+            description="Move the clock to the preset spot right away (center or top center)."
+          >
+            <button className="ui-button ui-button--primary" onClick={() => void handleApply()}>
+              {settings.positionMode === "top" ? "Align Top Center" : "Center Clock Now"}
             </button>
           </Row>
           <Row title="Reset position" description="Return to centered placement and clear the saved spot.">
@@ -135,15 +171,9 @@ export default function PositionSection() {
               <span />
             </Row>
           ) : (
-            monitors.map((m, index) => (
-              <Row
-                key={m.index}
-                title={describeMonitor(index, m.isPrimary)}
-                description={`Origin (${m.x}, ${m.y}) · work area handled automatically`}
-              >
-                <span style={{ fontSize: 12, color: "var(--ui-text-dim)" }}>
-                  {m.isPrimary ? "Primary" : "Secondary"}
-                </span>
+            monitors.map((m) => (
+              <Row key={m.index} title={monitorLabel(monitors, m)}>
+                <span />
               </Row>
             ))
           )}
@@ -152,7 +182,7 @@ export default function PositionSection() {
 
       <Section title="Widget size">
         <Panel>
-          <Row title="Width" htmlFor="widgetWidth">
+          <Row title="Width" description="Widget width in pixels." htmlFor="widgetWidth">
             <Slider
               id="widgetWidth"
               label="Widget width"
@@ -166,7 +196,7 @@ export default function PositionSection() {
               format={(v) => `${v}px`}
             />
           </Row>
-          <Row title="Height" htmlFor="widgetHeight">
+          <Row title="Height" description="Widget height in pixels." htmlFor="widgetHeight">
             <Slider
               id="widgetHeight"
               label="Widget height"

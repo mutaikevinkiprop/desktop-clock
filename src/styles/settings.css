@@ -24,7 +24,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 6px 10px 16px;
+  padding: 6px 12px 16px;
 }
 
 .settings-sidebar__brand-mark {
@@ -421,7 +421,7 @@
 
 .theme-card {
   border: 1.5px solid var(--ui-border);
-  border-radius: 11px;
+  border-radius: 12px;
   padding: 10px;
   text-align: left;
   background: var(--ui-panel);
@@ -501,7 +501,7 @@
   gap: 12px;
   background: var(--ui-panel);
   border: 1px solid var(--ui-border);
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 10px 12px;
 }
 
@@ -553,7 +553,7 @@
   color: var(--ui-text-dim);
   font-size: 12.5px;
   border: 1px dashed var(--ui-border);
-  border-radius: 10px;
+  border-radius: 12px;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -647,4 +647,83 @@
   font-family: Consolas, monospace;
   letter-spacing: 0.04em;
   color: var(--ui-accent);
+}
+
+/* ---------------------------------------------------------------------------
+   Hacker sync colour swatches
+--------------------------------------------------------------------------- */
+.hacker-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.hacker-swatch {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid var(--ui-border);
+  cursor: pointer;
+  padding: 0;
+  transition: transform var(--ui-transition), box-shadow var(--ui-transition),
+    border-color var(--ui-transition);
+}
+
+.hacker-swatch:hover {
+  transform: scale(1.1);
+}
+
+.hacker-swatch[data-selected="true"] {
+  border-color: var(--ui-text);
+  box-shadow: 0 0 0 2px var(--ui-panel), 0 0 0 4px var(--ui-text-dim);
+}
+
+/* Custom colour sequence editor */
+.hacker-custom-colors {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 260px;
+}
+
+.hacker-custom-color {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hacker-custom-color .ui-color {
+  flex: 1;
+}
+
+.hacker-custom-color__dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 1px solid var(--ui-border);
+}
+
+.hacker-custom-color__remove {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  color: var(--ui-text-dim);
+  font-size: 13px;
+  transition: color var(--ui-transition), border-color var(--ui-transition);
+}
+
+.hacker-custom-color__remove:hover:not(:disabled) {
+  color: #ff8f8f;
+  border-color: rgba(255, 110, 110, 0.4);
+}
+
+.hacker-custom-color__remove:disabled {
+  opacity: 0.35;
+  cursor: default;
 }

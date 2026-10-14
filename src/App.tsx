@@ -7,12 +7,13 @@
 
 import { useEffect } from "react";
 import ClockWidget from "./components/ClockWidget";
+import ContributionWidget from "./components/ContributionWidget";
 import SettingsApp from "./settings/SettingsApp";
 import { useSettings } from "./services/settingsStore";
 import { attachNativeListeners } from "./services/trayEvents";
 
 interface AppProps {
-  surface: "widget" | "settings";
+  surface: "widget" | "settings" | "contrib";
 }
 
 export default function App({ surface }: AppProps) {
@@ -31,5 +32,7 @@ export default function App({ surface }: AppProps) {
     return null; // Avoid a flash of default settings before hydration.
   }
 
-  return surface === "settings" ? <SettingsApp /> : <ClockWidget />;
+  if (surface === "settings") return <SettingsApp />;
+  if (surface === "contrib") return <ContributionWidget />;
+  return <ClockWidget />;
 }
