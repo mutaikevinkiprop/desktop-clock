@@ -4,7 +4,7 @@ A lightweight, beautiful digital clock widget for Windows. Fully customizable wi
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 ![Platform: Windows](https://img.shields.io/badge/Platform-Windows-blue.svg)
-![Version: 1.0.0](https://img.shields.io/badge/Version-1.0.0-green.svg)
+![Version: 1.1.0](https://img.shields.io/badge/Version-1.1.0-green.svg)
 
 ## ✨ Features
 
@@ -34,13 +34,13 @@ Choose one installer:
 
 ### Windows Installer (Recommended)
 ```
-Desktop Clock_1.0.0_x64_en-US.msi
+Desktop Clock_1.1.0_x64_en-US.msi
 ```
 Standard Windows MSI — integrates with Windows Add/Remove Programs.
 
 ### NSIS Setup (Alternative)
 ```
-Desktop Clock_1.0.0_x64-setup.exe
+Desktop Clock_1.1.0_x64-setup.exe
 ```
 Lightweight NSIS installer.
 
