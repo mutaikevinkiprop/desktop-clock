@@ -16,7 +16,8 @@ A lightweight, beautiful digital clock widget for Windows. Fully customizable wi
 - **🔧 Full settings UI** — Easy-to-use settings window for all options
 - **🚀 Launch at startup** (optional) — User-controlled auto-start
 - **💾 Lightweight** — ~3.6 MB application + bundled WebView2 runtime
-- **🔒 Privacy-first** — No data collection, no network calls, no ads
+- **🟩 Live contribution wallpaper** — A GitHub-contribution heatmap that flashes a light sweep across your desktop, behind the clock (no Lively or Python needed)
+- **🔒 Privacy-first** — No tracking, no ads; only connects to the internet if you opt into the GitHub contribution wallpaper
 
 ## 🎯 Use Cases
 
@@ -98,6 +99,16 @@ Lightweight NSIS installer.
 - **Additional timezones** — Add up to 10 custom timezone clocks
 - **Format** — 12-hour or 24-hour display
 
+### Wallpaper
+
+- **Enable** — Draw the contribution wallpaper behind the clock
+- **Source** — Simulated (offline) or a real GitHub profile
+- **GitHub username** — Used only when the source is set to GitHub (public profiles, no token)
+- **Flashing sweep** — Animate a light travelling across the squares (with a speed control)
+- **Show empty squares** — Draw the faint empty cells too
+- **Lit colour** — Base colour of the active squares
+- **Headline** — Show the contribution total and streak
+
 ### Behavior
 
 - **Launch at startup** — Enable/disable auto-start (user-controlled)
@@ -119,9 +130,10 @@ Lightweight NSIS installer.
 **Desktop Clock respects your privacy:**
 
 - ✅ **No data collection** — Your settings stay on your device
-- ✅ **No network calls** — App never connects to the internet
 - ✅ **No telemetry** — No usage tracking or analytics
 - ✅ **No ads** — Completely ad-free
+- ✅ **Offline by default** — The app makes no network calls unless you enable the GitHub contribution wallpaper
+- ✅ **Opt-in network use** — When you set the wallpaper source to "GitHub", the app fetches that public profile's contribution graph from `github.com` (no login, no token, no other data sent)
 - ✅ **Open source** — Source code is on GitHub for inspection
 - ✅ **Local storage only** — All settings in `%APPDATA%\Desktop Clock`
 
@@ -176,13 +188,18 @@ npm install
 # Development mode (with hot reload)
 npm run tauri:dev
 
-# Build for release
+# Build for release (full installers)
 npm run tauri build
 
 # Output artifacts:
 # - src-tauri/target/release/bundle/msi/
 # - src-tauri/target/release/bundle/nsis/
 ```
+
+> **Note:** a bare `cargo build --release` does **not** embed the frontend and
+> the app will try to load from `localhost:1420`. Always use `npm run tauri build`
+> (or the bundled `./build-app.ps1` helper), which enables the `custom-protocol`
+> feature so the frontend is embedded correctly.
 
 ### Project Structure
 

@@ -121,7 +121,7 @@ export default function SystemSection() {
             title="Tray icon"
             description="Click the tray icon to show or hide the clock. Right-click for more options."
           >
-            <span style={{ fontSize: 12, color: "var(--ui-text-dim)" }}>
+            <span style={{ fontSize: 12.5, color: "var(--ui-text-dim)" }}>
               Always available
             </span>
           </Row>

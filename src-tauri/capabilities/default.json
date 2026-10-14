@@ -2,7 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Capabilities for the desktop clock widget and its settings window.",
-  "windows": ["main", "settings"],
+  "windows": ["main", "settings", "contrib", "wallpaper-*"],
   "permissions": [
     "core:default",
     "core:window:allow-set-position",

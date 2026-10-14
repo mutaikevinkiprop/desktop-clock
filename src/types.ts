@@ -8,7 +8,42 @@
 
 export type TimeFormat = "12" | "24";
 
-export type PositionMode = "custom" | "center";
+/** Hacker sync behaviour: off, a single pinned colour, or a rotating palette. */
+export type HackerMode = "off" | "fixed" | "rotate";
+
+/** Which colour set the hacker sync uses. */
+export type HackerPaletteSource = "preset" | "custom";
+
+/** Which data drives the contribution grid. */
+export type ContributionSource = "simulated" | "github";
+
+/**
+ * The floating contribution widget: a GitHub-style contribution heatmap that
+ * lives on the desktop as its own fixed, non-resizable band spanning the full
+ * width of its monitor (horizontally centered, vertically centered), rendered
+ * over a fully transparent background with the squares flush against the
+ * left and right edges of the window.
+ */
+export interface ContributionSettings {
+  /** Show the floating contribution widget. */
+  enabled: boolean;
+  /** Where the contribution data comes from. */
+  source: ContributionSource;
+  /** GitHub username when `source` is "github"; also shown as the headline
+   *  profile label, e.g. "@mutaikevinkiprop", for either source. */
+  username: string;
+  /** Draw the dim "off" squares as well as the lit ones. */
+  grid: boolean;
+  /** Auto-play the flashing sweep across the grid. */
+  animate: boolean;
+  /** Sweep speed, 1 (slow) .. 10 (fast). */
+  speed: number;
+  /** Show the headline (total + streak) above the grid. */
+  headline: boolean;
+}
+
+/** "custom" = user-dragged spot, "center" = exact screen center, "top" = top edge, horizontally centered. */
+export type PositionMode = "custom" | "center" | "top";
 
 /** Monitor selector. `primary`, `current`, or `index:N` (N = monitor index). */
 export type MonitorTarget = string;
@@ -59,6 +94,8 @@ export interface Settings {
   shadowStrength: number; // 0..100
   glowEnabled: boolean;
   glowStrength: number; // 0..100
+  /** Gentle breathing glow + scale pulse that makes the clock stand out. */
+  pulseEnabled: boolean;
 
   // --- Typography ----------------------------------------------------------
   fontFamily: string;
@@ -74,7 +111,9 @@ export interface Settings {
   monitor: MonitorTarget;
   positionMode: PositionMode;
   centerOnStartup: boolean;
-  /** Last known custom position (logical px, virtual-desktop coords). */
+  /** Last known custom position in PHYSICAL px (virtual-desktop coordinates,
+   *  uniform across monitors regardless of each display's scale factor).
+   *  Settings v1 stored logical px; those are converted on restore. */
   savedPosition: { x: number; y: number } | null;
 
   // --- Widget window -------------------------------------------------------
@@ -86,6 +125,34 @@ export interface Settings {
   /** Window size in logical px. */
   widgetSize: { width: number; height: number };
   widgetVisible: boolean;
+
+  // --- Hacker sync ---------------------------------------------------------
+  /**
+   * Hacker-sync mode:
+   *   "off"     - use the user's own colours (no hacker palette).
+   *   "fixed"   - pin ONE colour (a preset entry or a custom colour),
+   *               no rotation.
+   *   "rotate"  - cycle the palette on a timer (`hackerRotateSeconds`).
+   */
+  hackerMode: HackerMode;
+  /**
+   * @deprecated Superseded by `hackerMode`. Kept so older settings files load;
+   * mirrored to `hackerMode === "rotate"` on save.
+   */
+  hackerSync: boolean;
+  /** Palette id to pin when hackerMode is "fixed" and source is "preset". */
+  hackerFixedId: string;
+  /** "preset" = the classic hacker palette; "custom" = the user's own
+   *  colour sequence (`hackerCustomColors`). */
+  hackerPaletteSource: HackerPaletteSource;
+  /** User-defined rotation colours (normalised `#rrggbb` values). */
+  hackerCustomColors: string[];
+  /** Pinned colour when hackerMode is "fixed" and source is "custom". */
+  hackerFixedColor: string;
+  /** Rotation interval in seconds (10..300). */
+  hackerRotateSeconds: number;
+  /** Floating contribution-widget settings. */
+  contributions: ContributionSettings;
 
   // --- System --------------------------------------------------------------
   autostart: boolean;

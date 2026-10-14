@@ -38,6 +38,7 @@ export default function ClockFace({ settings, now, preview = false }: ClockFaceP
     <div
       className="clock-face"
       data-glow={settings.glowEnabled ? "true" : "false"}
+      data-pulse={settings.pulseEnabled ? "true" : "false"}
       data-preview={preview ? "true" : "false"}
     >
       <div className="clock-content">

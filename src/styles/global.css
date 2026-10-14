@@ -17,7 +17,8 @@ body,
   width: 100%;
 }
 
-html[data-surface="widget"] body {
+html[data-surface="widget"] body,
+html[data-surface="contrib"] body {
   background: transparent;
   overflow: hidden;
 }
@@ -37,6 +38,13 @@ html[data-surface="widget"] body {
   --clock-blur: 12px;
   --clock-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
   --clock-glow: none;
+  /* Subtle dark+light outline around the digits so the clock stays legible
+     on both light and dark desktop backgrounds. */
+  --clock-contrast:
+    0 0 1px rgba(0, 0, 0, 0.6),
+    0 0 2px rgba(0, 0, 0, 0.35),
+    0 0 6px rgba(255, 255, 255, 0.12),
+    0 1px 3px rgba(0, 0, 0, 0.35);
   --clock-font: "Segoe UI", system-ui, sans-serif;
   --clock-size: 72px;
   --clock-weight: 600;

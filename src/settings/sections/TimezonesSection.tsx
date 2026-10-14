@@ -92,6 +92,7 @@ export default function TimezonesSection() {
                 <button
                   className="ui-button"
                   aria-pressed={clock.visible}
+                  style={{ minWidth: 78 }}
                   onClick={() => updateClock(clock.id, { visible: !clock.visible })}
                 >
                   {clock.visible ? "Shown" : "Hidden"}

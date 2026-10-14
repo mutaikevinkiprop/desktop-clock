@@ -34,6 +34,8 @@ export function applyThemeVariables(settings: Settings, root: HTMLElement): void
 
   root.style.setProperty(
     "--clock-shadow",
+    // Soft drop shadow only. No coloured halo around the widget edge, so the
+    // border area never picks up a red/brownish glow from the accent colour.
     settings.shadowEnabled && settings.showShadow
       ? `0 ${shadowY}px ${shadowBlur}px rgba(0, 0, 0, ${0.45 * shadowAlpha})`
       : "none",

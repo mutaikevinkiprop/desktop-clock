@@ -209,6 +209,16 @@ export default function AppearanceSection() {
               format={(v) => `${v}%`}
             />
           </Row>
+          <Row
+            title="Breathing pulse"
+            description="A gentle glow and scale pulse so the clock catches the eye without being distracting."
+          >
+            <Toggle
+              checked={settings.pulseEnabled}
+              label="Breathing pulse"
+              onChange={(checked) => update({ pulseEnabled: checked })}
+            />
+          </Row>
         </Panel>
       </Section>
 

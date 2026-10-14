@@ -33,6 +33,7 @@ export default function TypographySection() {
                     settings.fontFamily === font.id ? "ui-button ui-button--primary" : "ui-button"
                   }
                   aria-pressed={settings.fontFamily === font.id}
+                  style={{ minWidth: 88 }}
                   onClick={() => update({ fontFamily: font.id })}
                 >
                   {settings.fontFamily === font.id ? "Selected" : "Use"}

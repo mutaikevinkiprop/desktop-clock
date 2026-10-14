@@ -89,6 +89,10 @@ export default function ContextMenu() {
       case "center":
         await store.centerNow();
         break;
+      case "top":
+        store.update({ positionMode: "top", savedPosition: null });
+        await native.alignTopWindow(store.settings.monitor);
+        break;
       case "center-primary":
         store.set("monitor", "primary");
         await native.centerWindow("primary");
@@ -129,6 +133,7 @@ export default function ContextMenu() {
       label: "Position",
       children: [
         { type: "item", id: "center", label: "Center on Screen" },
+        { type: "item", id: "top", label: "Top Center" },
         { type: "item", id: "center-primary", label: "Center on Primary Monitor" },
         { type: "item", id: "center-current", label: "Center on Current Monitor" },
         { type: "item", id: "custom", label: "Custom Position" },

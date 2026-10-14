@@ -6,12 +6,12 @@
  * corrupted, truncated, hand-edited, or written by an older version.
  */
 
-import type { Settings, ThemeId, TimeFormat, TimezoneClock } from "../types";
+import type { ContributionSettings, HackerMode, HackerPaletteSource, Settings, ThemeId, TimeFormat, TimezoneClock } from "../types";
 import { getTheme } from "../themes";
 import { detectLocalZone, detectSystemTimeFormat, isValidTimeZone, zoneToLabel } from "../utils/time";
-import { clamp, isValidHexColor, num, oneOf, str, uid } from "../utils/dom";
+import { clamp, isValidHexColor, normalizeHex, num, oneOf, str, uid } from "../utils/dom";
 
-export const SETTINGS_VERSION = 1;
+export const SETTINGS_VERSION = 2;
 export const STORE_FILE = "settings.json";
 export const STORE_KEY = "settings";
 
@@ -26,7 +26,7 @@ const THEME_IDS: readonly ThemeId[] = [
 ];
 
 /** Widget default size in logical pixels. */
-export const DEFAULT_WIDGET_SIZE = { width: 520, height: 190 };
+export const DEFAULT_WIDGET_SIZE = { width: 520, height: 204 };
 
 /** Build a fresh, fully-populated default settings object. */
 export function createDefaultSettings(): Settings {
@@ -48,17 +48,18 @@ export function createDefaultSettings(): Settings {
     backgroundColor: "#10131a",
     textColor: "#f5f7fa",
     accentColor: "#5b8cff",
-    opacity: 78,
-    blur: 12,
-    cornerRadius: 22,
-    padding: 26,
-    borderEnabled: true,
+    opacity: 0,
+    blur: 0,
+    cornerRadius: 0,
+    padding: 0,
+    borderEnabled: false,
     borderColor: "#ffffff",
-    borderWidth: 1,
+    borderWidth: 0,
     shadowEnabled: true,
-    shadowStrength: 45,
-    glowEnabled: false,
-    glowStrength: 25,
+    shadowStrength: 0,
+    glowEnabled: true,
+    glowStrength: 48,
+    pulseEnabled: true,
 
     // Typography
     fontFamily: "system-sans",
@@ -72,21 +73,41 @@ export function createDefaultSettings(): Settings {
 
     // Position
     monitor: "primary",
-    positionMode: "center",
+    positionMode: "top",
     centerOnStartup: true,
     savedPosition: null,
 
     // Widget
     alwaysOnTop: false,
-    clickThrough: false,
+    clickThrough: true,
     resizable: true,
     draggable: true,
     showShadow: true,
     widgetSize: { ...DEFAULT_WIDGET_SIZE },
     widgetVisible: true,
 
+    // Hacker sync
+    hackerMode: "fixed",
+    hackerSync: false,
+    hackerFixedId: "full",
+    hackerPaletteSource: "preset",
+    hackerCustomColors: ["#ffb000", "#5fe0ff", "#7dffa0"],
+    hackerFixedColor: "#ffb000",
+    hackerRotateSeconds: 10,
+
+    // Floating contribution widget (GitHub-style heatmap)
+    contributions: {
+      enabled: true,
+      source: "simulated",
+      username: "",
+      grid: true,
+      animate: true,
+      speed: 7,
+      headline: true,
+    },
+
     // System
-    autostart: false,
+    autostart: true,
     shortcutEnabled: true,
     shortcut: "Ctrl+Alt+KeyC",
     shortcutTarget: "primary",
@@ -111,6 +132,46 @@ function sanitizeClock(raw: unknown, index: number): TimezoneClock | null {
     label: str(obj.label, zoneToLabel(zone)).toUpperCase(),
     visible: typeof obj.visible === "boolean" ? obj.visible : true,
   };
+}
+
+/** Sanitise the floating contribution-widget settings. */
+function sanitizeContributions(
+  raw: unknown,
+  fallback: ContributionSettings,
+): ContributionSettings {
+  if (raw === null || typeof raw !== "object") return { ...fallback };
+  const obj = raw as Record<string, unknown>;
+  const bool = (v: unknown, d: boolean) => (typeof v === "boolean" ? v : d);
+  const source: ContributionSettings["source"] =
+    obj.source === "github" ? "github" : "simulated";
+  const username =
+    typeof obj.username === "string" ? obj.username.trim().slice(0, 39) : fallback.username;
+
+  return {
+    enabled: bool(obj.enabled, fallback.enabled),
+    source,
+    username,
+    grid: bool(obj.grid, fallback.grid),
+    animate: bool(obj.animate, fallback.animate),
+    speed: Math.round(clamp(num(obj.speed, fallback.speed), 1, 10)),
+    headline: bool(obj.headline, fallback.headline),
+  };
+}
+
+/** Sanitise the user's custom hacker colour sequence (normalised hex). */
+function sanitizeHackerColors(raw: unknown, fallback: string[]): string[] {
+  if (!Array.isArray(raw)) return [...fallback];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const item of raw) {
+    if (typeof item !== "string" || !isValidHexColor(item)) continue;
+    const hex = normalizeHex(item).slice(0, 7).toLowerCase();
+    if (seen.has(hex)) continue;
+    seen.add(hex);
+    out.push(hex);
+    if (out.length >= 12) break;
+  }
+  return out.length > 0 ? out : [...fallback];
 }
 
 /**
@@ -191,6 +252,8 @@ export function sanitizeSettings(raw: unknown): Settings {
     glowEnabled:
       typeof input.glowEnabled === "boolean" ? input.glowEnabled : defaults.glowEnabled,
     glowStrength: clampNum(input.glowStrength, defaults.glowStrength, 0, 100),
+    pulseEnabled:
+      typeof input.pulseEnabled === "boolean" ? input.pulseEnabled : defaults.pulseEnabled,
 
     fontFamily: str(input.fontFamily, defaults.fontFamily),
     fontSize: clampNum(input.fontSize, defaults.fontSize, 14, 400),
@@ -203,7 +266,7 @@ export function sanitizeSettings(raw: unknown): Settings {
     monitor: str(input.monitor, defaults.monitor),
     positionMode: oneOf<Settings["positionMode"]>(
       input.positionMode,
-      ["custom", "center"],
+      ["custom", "center", "top"],
       defaults.positionMode,
     ),
     centerOnStartup:
@@ -222,15 +285,53 @@ export function sanitizeSettings(raw: unknown): Settings {
     widgetVisible:
       typeof input.widgetVisible === "boolean" ? input.widgetVisible : defaults.widgetVisible,
 
+    hackerMode: oneOf<HackerMode>(
+      input.hackerMode,
+      ["off", "fixed", "rotate"],
+      // Migrate the old boolean: hackerSync:true used to mean "rotate".
+      typeof input.hackerSync === "boolean"
+        ? input.hackerSync
+          ? "rotate"
+          : "off"
+        : defaults.hackerMode,
+    ),
+    hackerSync: false, // derived below from hackerMode
+    hackerFixedId: str(input.hackerFixedId, defaults.hackerFixedId),
+    hackerPaletteSource: oneOf<HackerPaletteSource>(
+      input.hackerPaletteSource,
+      ["preset", "custom"],
+      defaults.hackerPaletteSource,
+    ),
+    hackerCustomColors: sanitizeHackerColors(
+      input.hackerCustomColors,
+      defaults.hackerCustomColors,
+    ),
+    hackerFixedColor: color(input.hackerFixedColor, defaults.hackerFixedColor),
+    hackerRotateSeconds: Math.round(
+      clampNum(input.hackerRotateSeconds, defaults.hackerRotateSeconds, 10, 300),
+    ),
+
+    contributions: sanitizeContributions(
+      input.contributions ?? input.wallpaper,
+      defaults.contributions,
+    ),
+
     autostart: typeof input.autostart === "boolean" ? input.autostart : defaults.autostart,
     shortcutEnabled:
       typeof input.shortcutEnabled === "boolean" ? input.shortcutEnabled : defaults.shortcutEnabled,
     shortcut: hasShortcut ? shortcut : defaults.shortcut,
     shortcutTarget: str(input.shortcutTarget, defaults.shortcutTarget),
 
-    version: SETTINGS_VERSION,
+    // Preserve the STORED version so startup can migrate v1 saved positions
+    // (logical px) to physical px. The version is bumped on the next persist.
+    version: typeof input.version === "number" && Number.isFinite(input.version)
+      ? Math.max(1, Math.floor(input.version))
+      : 1,
     localZone: isValidTimeZone(str(input.localZone, "")) ? str(input.localZone, "") : defaults.localZone,
   };
+
+  // Keep the legacy `hackerSync` boolean mirrored to the new mode.
+  settings.hackerSync = settings.hackerMode === "rotate";
 
   // If the user selected a theme preset but the stored theme is "custom",
   // re-detect so the picker highlights the correct preset.
