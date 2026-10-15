@@ -1,38 +1,38 @@
 /**
- * Clock settings: format, visible elements, and the customisable hacker
- * colour sync.
+ * Clock settings: format, visible elements, and the customisable colour
+ * sync.
  */
 
 import { useSettings } from "../../services/settingsStore";
 import { ColorInput, Panel, RadioGroup, Row, Section, Segmented, Toggle } from "../../components/Controls";
-import type { HackerMode, HackerPaletteSource, TimeFormat } from "../../types";
-import { HACKER_PALETTE, parseColorToHex } from "../../utils/hackerPalette";
+import type { ColorSyncMode, ColorPaletteSource, TimeFormat } from "../../types";
+import { CLASSIC_PALETTE, parseColorToHex } from "../../utils/colorPalette";
 
 export default function ClockSection() {
   const settings = useSettings((s) => s.settings);
   const update = useSettings((s) => s.update);
 
-  const customColors = settings.hackerCustomColors;
-  const isCustom = settings.hackerPaletteSource === "custom";
+  const customColors = settings.colorCustomColors;
+  const isCustom = settings.colorPaletteSource === "custom";
 
   const setCustomColor = (index: number, value: string) => {
     const next = [...customColors];
     // Accept HEX / RGB / HSL input; normalise to #rrggbb for storage.
     next[index] = parseColorToHex(value) ?? value;
-    update({ hackerCustomColors: next });
+    update({ colorCustomColors: next });
   };
 
   const addCustomColor = () => {
     if (customColors.length >= 12) return;
     const suggestion =
-      HACKER_PALETTE[customColors.length % HACKER_PALETTE.length]!.text;
-    update({ hackerCustomColors: [...customColors, suggestion] });
+      CLASSIC_PALETTE[customColors.length % CLASSIC_PALETTE.length]!.text;
+    update({ colorCustomColors: [...customColors, suggestion] });
   };
 
   const removeCustomColor = (index: number) => {
     if (customColors.length <= 1) return;
     update({
-      hackerCustomColors: customColors.filter((_, i) => i !== index),
+      colorCustomColors: customColors.filter((_, i) => i !== index),
     });
   };
 
@@ -117,54 +117,54 @@ export default function ClockSection() {
         </Panel>
       </Section>
 
-      <Section title="Hacker sync">
+      <Section title="Colour sync">
         <Panel>
           <Row
             title="Mode"
             description="Follow your own theme colours, hold one colour, or rotate through a palette."
           >
-            <Segmented<HackerMode>
-              ariaLabel="Hacker sync mode"
-              value={settings.hackerMode}
+            <Segmented<ColorSyncMode>
+              ariaLabel="Colour sync mode"
+              value={settings.colorSyncMode}
               options={[
                 { value: "off", label: "Off" },
                 { value: "fixed", label: "Fixed" },
                 { value: "rotate", label: "Rotate" },
               ]}
-              onChange={(value) => update({ hackerMode: value })}
+              onChange={(value) => update({ colorSyncMode: value })}
             />
           </Row>
 
-          {settings.hackerMode !== "off" && (
+          {settings.colorSyncMode !== "off" && (
             <Row
               title="Colour set"
-              description="The classic hacker palette, or your own custom colours."
+              description="The classic palette, or your own custom colours."
             >
-              <Segmented<HackerPaletteSource>
+              <Segmented<ColorPaletteSource>
                 ariaLabel="Palette source"
-                value={settings.hackerPaletteSource}
+                value={settings.colorPaletteSource}
                 options={[
                   { value: "preset", label: "Classic" },
                   { value: "custom", label: "Custom" },
                 ]}
-                onChange={(value) => update({ hackerPaletteSource: value })}
+                onChange={(value) => update({ colorPaletteSource: value })}
               />
             </Row>
           )}
 
-          {settings.hackerMode === "fixed" && (
+          {settings.colorSyncMode === "fixed" && (
             <Row
               title="Pinned colour"
               description="The single colour the clock keeps."
             >
-              <div className="hacker-swatches" role="radiogroup" aria-label="Fixed colour">
-                {(isCustom ? customColors : HACKER_PALETTE.map((e) => e.text)).map(
+              <div className="color-swatches" role="radiogroup" aria-label="Fixed colour">
+                {(isCustom ? customColors : CLASSIC_PALETTE.map((e) => e.text)).map(
                   (colour, index) => {
-                    const preset = isCustom ? null : HACKER_PALETTE[index]!;
+                    const preset = isCustom ? null : CLASSIC_PALETTE[index]!;
                     const id = preset ? preset.id : `custom-${index}`;
                     const selected = isCustom
-                      ? customColors[index] === settings.hackerFixedColor
-                      : preset!.id === settings.hackerFixedId;
+                      ? customColors[index] === settings.colorFixedColor
+                      : preset!.id === settings.colorFixedId;
                     return (
                       <button
                         key={id}
@@ -173,13 +173,13 @@ export default function ClockSection() {
                         aria-checked={selected}
                         aria-label={preset ? preset.name : colour}
                         title={preset ? preset.name : colour}
-                        className="hacker-swatch"
+                        className="color-swatch"
                         data-selected={selected}
                         style={{ background: parseColorToHex(colour) ?? "#000000" }}
                         onClick={() =>
                           isCustom
-                            ? update({ hackerFixedColor: colour })
-                            : update({ hackerFixedId: preset!.id })
+                            ? update({ colorFixedColor: colour })
+                            : update({ colorFixedId: preset!.id })
                         }
                       />
                     );
@@ -189,16 +189,16 @@ export default function ClockSection() {
             </Row>
           )}
 
-          {settings.hackerMode === "rotate" && (
+          {settings.colorSyncMode === "rotate" && (
             <Row
               title="Rotation interval"
-              description="How often the colour changes. The classic palette at 60s stays in sync with the hacker wallpaper."
+              description="How often the colour changes. The clock and the contribution grid always switch together."
             >
               <select
                 className="ui-select"
-                value={String(settings.hackerRotateSeconds)}
+                value={String(settings.colorRotateSeconds)}
                 onChange={(e) =>
-                  update({ hackerRotateSeconds: Number(e.target.value) })
+                  update({ colorRotateSeconds: Number(e.target.value) })
                 }
               >
                 <option value={10}>Every 10 seconds</option>
@@ -210,16 +210,16 @@ export default function ClockSection() {
             </Row>
           )}
 
-          {settings.hackerMode !== "off" && isCustom && (
+          {settings.colorSyncMode !== "off" && isCustom && (
             <Row
               title="Custom colours"
               description="Pick colours or type HEX / RGB / HSL values. They rotate in this order."
             >
-              <div className="hacker-custom-colors">
+              <div className="color-custom-colors">
                 {customColors.map((colour, index) => (
-                  <div className="hacker-custom-color" key={index}>
+                  <div className="color-custom-color" key={index}>
                     <span
-                      className="hacker-custom-color__dot"
+                      className="color-custom-color__dot"
                       style={{ background: parseColorToHex(colour) ?? "#000000" }}
                       aria-hidden="true"
                     />
@@ -230,7 +230,7 @@ export default function ClockSection() {
                     />
                     <button
                       type="button"
-                      className="hacker-custom-color__remove"
+                      className="color-custom-color__remove"
                       aria-label={`Remove colour ${index + 1}`}
                       title="Remove colour"
                       disabled={customColors.length <= 1}

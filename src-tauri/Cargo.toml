@@ -1,6 +1,6 @@
 [package]
 name = "desktop-clock"
-version = "1.1.1"
+version = "1.2.0"
 description = "A polished desktop digital clock widget for Windows"
 authors = ["Desktop Clock"]
 edition = "2021"

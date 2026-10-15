@@ -27,11 +27,11 @@ export default function ClockWidget() {
   // Tick at second resolution only when seconds are visible, otherwise per minute.
   const now = useClock(settings.showSeconds ? "second" : "minute");
 
-  // --- Hacker sync ----------------------------------------------------------
-  // "rotate" recolours the clock every minute (in step with the wallpaper);
-  // "fixed" pins a single palette colour. Both leave the user's own colours
-  // untouched when the mode is "off". Shared with the contribution widget so
-  // both always render the same colour.
+  // --- Colour sync ----------------------------------------------------------
+  // "rotate" recolours the clock on a timer; "fixed" pins a single palette
+  // colour. Both leave the user's own colours untouched when the mode is
+  // "off". Shared with the contribution widget so both always render the
+  // same colour.
   const { textColor, accentColor } = useEffectiveThemeColors();
 
   // --- Theme variables ------------------------------------------------------

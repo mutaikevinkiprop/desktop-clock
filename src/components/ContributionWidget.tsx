@@ -41,7 +41,7 @@ export default function ContributionWidget() {
   const rootRef = useRef<HTMLDivElement>(null);
 
   // The grid colour is the SAME effective theme colour the clock renders
-  // with (hacker-sync aware), so the two widgets can never diverge.
+  // with (colour-sync aware), so the two widgets can never diverge.
   const { textColor, accentColor } = useEffectiveThemeColors();
 
   // Apply the theme variables (headline colour etc.) exactly like the clock.

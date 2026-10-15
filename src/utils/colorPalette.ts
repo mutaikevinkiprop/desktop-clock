@@ -1,29 +1,26 @@
 /**
- * Hacker sync palette.
+ * Colour sync palette.
  *
  * SHARED SPEC - in "rotate" mode with the classic preset palette, the active
  * colour is derived from the WALL CLOCK (not process state):
  *
  *     index = floor(Date.now() / 60000) % palette.length
  *
- * Both the clock widget and the wallpaper evaluate this formula, so they flip
- * to the same colour on the same minute boundary without any messaging.
+ * Both the clock widget and the contribution grid evaluate this formula, so
+ * they flip to the same colour on the same minute boundary without any
+ * messaging.
  *
  * Users can also build their OWN rotation sequence (any HEX / RGB / HSL
  * colours) and choose the rotation interval. Custom palettes are independent
- * of the wallpaper.
+ * of the classic presets.
  *
- * In "fixed" mode the user pins one colour; the wallpaper (loaded with the
- * matching #hash) shows that same colour for the classic preset entries.
- *
- * If you change the preset palette here, change it in the wallpaper's
- * index.html (the `HACKER_PALETTE` constant) too.
+ * In "fixed" mode the user pins one colour.
  */
 
-import type { HackerPaletteSource } from "../types";
+import type { ColorPaletteSource } from "../types";
 import { clamp, isValidHexColor, normalizeHex } from "./dom";
 
-export interface HackerColour {
+export interface PaletteColor {
   /** Stable id, also used as the wallpaper URL hash (e.g. "#amber"). */
   id: string;
   /** Human-readable name shown in settings. */
@@ -36,7 +33,7 @@ export interface HackerColour {
   accent: string;
 }
 
-export const HACKER_PALETTE: HackerColour[] = [
+export const CLASSIC_PALETTE: PaletteColor[] = [
   { id: "amber",   name: "Amber",   text: "#ffb000", dim: "#5a3c00", accent: "#ff5a3b" },
   { id: "ice",     name: "Ice",     text: "#5fe0ff", dim: "#0e4d5a", accent: "#ff5a7a" },
   { id: "matrix",  name: "Matrix",  text: "#7dffa0", dim: "#0d6a22", accent: "#ff4d4d" },
@@ -45,30 +42,30 @@ export const HACKER_PALETTE: HackerColour[] = [
 ];
 
 /** Rotation period in milliseconds (one minute). */
-export const HACKER_PERIOD_MS = 60_000;
+export const CLASSIC_PERIOD_MS = 60_000;
 
 /** Index of the active palette entry for a given timestamp (rotate mode). */
-export function hackerIndexAt(now: number): number {
-  return Math.floor(now / HACKER_PERIOD_MS) % HACKER_PALETTE.length;
+export function classicIndexAt(now: number): number {
+  return Math.floor(now / CLASSIC_PERIOD_MS) % CLASSIC_PALETTE.length;
 }
 
 /** The palette entry for a given timestamp (rotate mode, classic preset). */
-export function hackerColourAt(now: number): HackerColour {
-  return HACKER_PALETTE[hackerIndexAt(now)] ?? HACKER_PALETTE[0]!;
+export function classicColorAt(now: number): PaletteColor {
+  return CLASSIC_PALETTE[classicIndexAt(now)] ?? CLASSIC_PALETTE[0]!;
 }
 
 /** Look up a palette entry by id, falling back to the first entry. */
-export function hackerColourById(id: string): HackerColour {
-  return HACKER_PALETTE.find((c) => c.id === id) ?? HACKER_PALETTE[0]!;
+export function classicColorById(id: string): PaletteColor {
+  return CLASSIC_PALETTE.find((c) => c.id === id) ?? CLASSIC_PALETTE[0]!;
 }
 
 /** Milliseconds until the next colour change (next minute boundary). */
 export function msUntilNextChange(now: number): number {
-  return HACKER_PERIOD_MS - (now % HACKER_PERIOD_MS);
+  return CLASSIC_PERIOD_MS - (now % CLASSIC_PERIOD_MS);
 }
 
 // ---------------------------------------------------------------------------
-// Custom colours: parse + derive a full HackerColour from any user input.
+// Custom colours: parse + derive a full PaletteColor from any user input.
 // ---------------------------------------------------------------------------
 
 /** Parse a HEX (#rgb/#rrggbb/#rrggbbaa) or rgb()/hsl() (with/without alpha)
@@ -149,8 +146,8 @@ export function deriveAccentHex(hex: string): string {
   return hslToHex((h - 28 + 360) % 360, 0.85, light);
 }
 
-/** Build a full `HackerColour` from a single user colour. */
-export function hackerColourFromHex(hex: string): HackerColour {
+/** Build a full `PaletteColor` from a single user colour. */
+export function colorFromHex(hex: string): PaletteColor {
   const text = (parseColorToHex(hex) ?? "#ffffff").toLowerCase();
   return {
     id: `hex:${text}`,
@@ -165,26 +162,26 @@ export function hackerColourFromHex(hex: string): HackerColour {
  * Resolve the palette in use: the classic presets, or the user's own colour
  * sequence (each entry parsed and derived the same way).
  */
-export function hackerPaletteFor(
-  source: HackerPaletteSource,
+export function paletteFor(
+  source: ColorPaletteSource,
   customColors: string[],
-): HackerColour[] {
+): PaletteColor[] {
   if (source === "custom") {
     const colours = customColors
       .map((c) => parseColorToHex(c))
       .filter((c): c is string => !!c)
-      .map((c) => hackerColourFromHex(c));
-    return colours.length > 0 ? colours : HACKER_PALETTE;
+      .map((c) => colorFromHex(c));
+    return colours.length > 0 ? colours : CLASSIC_PALETTE;
   }
-  return HACKER_PALETTE;
+  return CLASSIC_PALETTE;
 }
 
 /** The active palette entry for a timestamp and a custom rotation period. */
-export function hackerColourAtIn(
-  palette: HackerColour[],
+export function colorAtIn(
+  palette: PaletteColor[],
   now: number,
   periodMs: number,
-): HackerColour {
+): PaletteColor {
   const len = Math.max(1, palette.length);
   const period = Math.max(1_000, periodMs);
   return palette[Math.floor(now / period) % len] ?? palette[0]!;

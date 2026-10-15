@@ -650,15 +650,15 @@
 }
 
 /* ---------------------------------------------------------------------------
-   Hacker sync colour swatches
+   Colour sync colour swatches
 --------------------------------------------------------------------------- */
-.hacker-swatches {
+.color-swatches {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.hacker-swatch {
+.color-swatch {
   width: 30px;
   height: 30px;
   border-radius: 50%;
@@ -669,34 +669,34 @@
     border-color var(--ui-transition);
 }
 
-.hacker-swatch:hover {
+.color-swatch:hover {
   transform: scale(1.1);
 }
 
-.hacker-swatch[data-selected="true"] {
+.color-swatch[data-selected="true"] {
   border-color: var(--ui-text);
   box-shadow: 0 0 0 2px var(--ui-panel), 0 0 0 4px var(--ui-text-dim);
 }
 
 /* Custom colour sequence editor */
-.hacker-custom-colors {
+.color-custom-colors {
   display: flex;
   flex-direction: column;
   gap: 8px;
   min-width: 260px;
 }
 
-.hacker-custom-color {
+.color-custom-color {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.hacker-custom-color .ui-color {
+.color-custom-color .ui-color {
   flex: 1;
 }
 
-.hacker-custom-color__dot {
+.color-custom-color__dot {
   width: 14px;
   height: 14px;
   border-radius: 50%;
@@ -704,7 +704,7 @@
   border: 1px solid var(--ui-border);
 }
 
-.hacker-custom-color__remove {
+.color-custom-color__remove {
   width: 30px;
   height: 30px;
   flex-shrink: 0;
@@ -718,12 +718,12 @@
   transition: color var(--ui-transition), border-color var(--ui-transition);
 }
 
-.hacker-custom-color__remove:hover:not(:disabled) {
+.color-custom-color__remove:hover:not(:disabled) {
   color: #ff8f8f;
   border-color: rgba(255, 110, 110, 0.4);
 }
 
-.hacker-custom-color__remove:disabled {
+.color-custom-color__remove:disabled {
   opacity: 0.35;
   cursor: default;
 }

@@ -8,11 +8,11 @@
 
 export type TimeFormat = "12" | "24";
 
-/** Hacker sync behaviour: off, a single pinned colour, or a rotating palette. */
-export type HackerMode = "off" | "fixed" | "rotate";
+/** Colour sync behaviour: off, a single pinned colour, or a rotating palette. */
+export type ColorSyncMode = "off" | "fixed" | "rotate";
 
-/** Which colour set the hacker sync uses. */
-export type HackerPaletteSource = "preset" | "custom";
+/** Which colour set the colour sync uses. */
+export type ColorPaletteSource = "preset" | "custom";
 
 /** Which data drives the contribution grid. */
 export type ContributionSource = "simulated" | "github";
@@ -126,31 +126,26 @@ export interface Settings {
   widgetSize: { width: number; height: number };
   widgetVisible: boolean;
 
-  // --- Hacker sync ---------------------------------------------------------
+  // --- Colour sync ---------------------------------------------------------
   /**
-   * Hacker-sync mode:
-   *   "off"     - use the user's own colours (no hacker palette).
+   * Colour-sync mode:
+   *   "off"     - use the user's own colours (no palette override).
    *   "fixed"   - pin ONE colour (a preset entry or a custom colour),
    *               no rotation.
-   *   "rotate"  - cycle the palette on a timer (`hackerRotateSeconds`).
+   *   "rotate"  - cycle the palette on a timer (`colorRotateSeconds`).
    */
-  hackerMode: HackerMode;
-  /**
-   * @deprecated Superseded by `hackerMode`. Kept so older settings files load;
-   * mirrored to `hackerMode === "rotate"` on save.
-   */
-  hackerSync: boolean;
-  /** Palette id to pin when hackerMode is "fixed" and source is "preset". */
-  hackerFixedId: string;
-  /** "preset" = the classic hacker palette; "custom" = the user's own
-   *  colour sequence (`hackerCustomColors`). */
-  hackerPaletteSource: HackerPaletteSource;
+  colorSyncMode: ColorSyncMode;
+  /** Palette id to pin when colorSyncMode is "fixed" and source is "preset". */
+  colorFixedId: string;
+  /** "preset" = the classic palette; "custom" = the user's own
+   *  colour sequence (`colorCustomColors`). */
+  colorPaletteSource: ColorPaletteSource;
   /** User-defined rotation colours (normalised `#rrggbb` values). */
-  hackerCustomColors: string[];
-  /** Pinned colour when hackerMode is "fixed" and source is "custom". */
-  hackerFixedColor: string;
+  colorCustomColors: string[];
+  /** Pinned colour when colorSyncMode is "fixed" and source is "custom". */
+  colorFixedColor: string;
   /** Rotation interval in seconds (10..300). */
-  hackerRotateSeconds: number;
+  colorRotateSeconds: number;
   /** Floating contribution-widget settings. */
   contributions: ContributionSettings;
 

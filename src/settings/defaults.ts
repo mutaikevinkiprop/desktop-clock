@@ -6,7 +6,7 @@
  * corrupted, truncated, hand-edited, or written by an older version.
  */
 
-import type { ContributionSettings, HackerMode, HackerPaletteSource, Settings, ThemeId, TimeFormat, TimezoneClock } from "../types";
+import type { ColorSyncMode, ColorPaletteSource, ContributionSettings, Settings, ThemeId, TimeFormat, TimezoneClock } from "../types";
 import { getTheme } from "../themes";
 import { detectLocalZone, detectSystemTimeFormat, isValidTimeZone, zoneToLabel } from "../utils/time";
 import { clamp, isValidHexColor, normalizeHex, num, oneOf, str, uid } from "../utils/dom";
@@ -86,14 +86,13 @@ export function createDefaultSettings(): Settings {
     widgetSize: { ...DEFAULT_WIDGET_SIZE },
     widgetVisible: true,
 
-    // Hacker sync
-    hackerMode: "fixed",
-    hackerSync: false,
-    hackerFixedId: "full",
-    hackerPaletteSource: "preset",
-    hackerCustomColors: ["#ffb000", "#5fe0ff", "#7dffa0"],
-    hackerFixedColor: "#ffb000",
-    hackerRotateSeconds: 10,
+    // Colour sync
+    colorSyncMode: "fixed",
+    colorFixedId: "full",
+    colorPaletteSource: "preset",
+    colorCustomColors: ["#ffb000", "#5fe0ff", "#7dffa0"],
+    colorFixedColor: "#ffb000",
+    colorRotateSeconds: 10,
 
     // Floating contribution widget (GitHub-style heatmap)
     contributions: {
@@ -158,8 +157,8 @@ function sanitizeContributions(
   };
 }
 
-/** Sanitise the user's custom hacker colour sequence (normalised hex). */
-function sanitizeHackerColors(raw: unknown, fallback: string[]): string[] {
+/** Sanitise the user's custom colour sequence (normalised hex). */
+function sanitizeColorList(raw: unknown, fallback: string[]): string[] {
   if (!Array.isArray(raw)) return [...fallback];
   const seen = new Set<string>();
   const out: string[] = [];
@@ -285,30 +284,37 @@ export function sanitizeSettings(raw: unknown): Settings {
     widgetVisible:
       typeof input.widgetVisible === "boolean" ? input.widgetVisible : defaults.widgetVisible,
 
-    hackerMode: oneOf<HackerMode>(
-      input.hackerMode,
+    // Colour sync. Settings files written before the rename stored these
+    // under the old "hacker*" keys; keep reading them so saved palettes
+    // survive the upgrade. New saves write the new keys only.
+    colorSyncMode: oneOf<ColorSyncMode>(
+      input.colorSyncMode ?? input.hackerMode,
       ["off", "fixed", "rotate"],
-      // Migrate the old boolean: hackerSync:true used to mean "rotate".
+      // Migrate the v1 boolean: hackerSync:true used to mean "rotate".
       typeof input.hackerSync === "boolean"
         ? input.hackerSync
           ? "rotate"
           : "off"
-        : defaults.hackerMode,
+        : defaults.colorSyncMode,
     ),
-    hackerSync: false, // derived below from hackerMode
-    hackerFixedId: str(input.hackerFixedId, defaults.hackerFixedId),
-    hackerPaletteSource: oneOf<HackerPaletteSource>(
-      input.hackerPaletteSource,
+    colorFixedId: str(input.colorFixedId ?? input.hackerFixedId, defaults.colorFixedId),
+    colorPaletteSource: oneOf<ColorPaletteSource>(
+      input.colorPaletteSource ?? input.hackerPaletteSource,
       ["preset", "custom"],
-      defaults.hackerPaletteSource,
+      defaults.colorPaletteSource,
     ),
-    hackerCustomColors: sanitizeHackerColors(
-      input.hackerCustomColors,
-      defaults.hackerCustomColors,
+    colorCustomColors: sanitizeColorList(
+      input.colorCustomColors ?? input.hackerCustomColors,
+      defaults.colorCustomColors,
     ),
-    hackerFixedColor: color(input.hackerFixedColor, defaults.hackerFixedColor),
-    hackerRotateSeconds: Math.round(
-      clampNum(input.hackerRotateSeconds, defaults.hackerRotateSeconds, 10, 300),
+    colorFixedColor: color(input.colorFixedColor ?? input.hackerFixedColor, defaults.colorFixedColor),
+    colorRotateSeconds: Math.round(
+      clampNum(
+        input.colorRotateSeconds ?? input.hackerRotateSeconds,
+        defaults.colorRotateSeconds,
+        10,
+        300,
+      ),
     ),
 
     contributions: sanitizeContributions(
@@ -329,9 +335,6 @@ export function sanitizeSettings(raw: unknown): Settings {
       : 1,
     localZone: isValidTimeZone(str(input.localZone, "")) ? str(input.localZone, "") : defaults.localZone,
   };
-
-  // Keep the legacy `hackerSync` boolean mirrored to the new mode.
-  settings.hackerSync = settings.hackerMode === "rotate";
 
   // If the user selected a theme preset but the stored theme is "custom",
   // re-detect so the picker highlights the correct preset.

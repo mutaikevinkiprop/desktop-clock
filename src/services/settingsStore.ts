@@ -133,14 +133,13 @@ const NATIVE_EFFECTS: Record<keyof Settings, NativeEffect | undefined> = {
   showShadow: undefined,
   widgetSize: undefined,
   widgetVisible: undefined,
-  // Changing the hacker mode/colour also restyles the contribution widget.
-  hackerMode: (s) => applyContributionNative(s),
-  hackerSync: undefined,
-  hackerFixedId: (s) => applyContributionNative(s),
-  hackerPaletteSource: (s) => applyContributionNative(s),
-  hackerCustomColors: (s) => applyContributionNative(s),
-  hackerFixedColor: (s) => applyContributionNative(s),
-  hackerRotateSeconds: (s) => applyContributionNative(s),
+  // Changing the colour-sync mode/colour also restyles the contribution widget.
+  colorSyncMode: (s) => applyContributionNative(s),
+  colorFixedId: (s) => applyContributionNative(s),
+  colorPaletteSource: (s) => applyContributionNative(s),
+  colorCustomColors: (s) => applyContributionNative(s),
+  colorFixedColor: (s) => applyContributionNative(s),
+  colorRotateSeconds: (s) => applyContributionNative(s),
   // The contributions block includes the typable GitHub username; the widget
   // window reloads from the store on its own, so no debounce is needed here.
   contributions: (s) => applyContributionNative(s),
@@ -185,14 +184,14 @@ export const useSettings = create<SettingsState>((setState, get) => ({
     let next = sanitizeSettings({ ...previous, ...patch });
 
     // Editing a colour means the user wants THEIR colours: disable the
-    // hacker-sync override so the edit is visible immediately instead of
+    // colour-sync override so the edit is visible immediately instead of
     // being masked by the pinned/rotating palette colour.
     const colourEdited =
       ("textColor" in patch && patch.textColor !== previous.textColor) ||
       ("accentColor" in patch && patch.accentColor !== previous.accentColor) ||
       ("backgroundColor" in patch && patch.backgroundColor !== previous.backgroundColor);
-    if (colourEdited && next.hackerMode !== "off") {
-      next = { ...next, hackerMode: "off" };
+    if (colourEdited && next.colorSyncMode !== "off") {
+      next = { ...next, colorSyncMode: "off" };
     }
 
     setState({ settings: next });
@@ -225,13 +224,13 @@ export const useSettings = create<SettingsState>((setState, get) => ({
   },
 
   applyTheme: (theme) => {
-    // A selected theme owns the colours: disable the hacker-sync override so
+    // A selected theme owns the colours: disable the colour-sync override so
     // the theme's palette actually reaches the clock and the contribution
-    // grid. (The user can re-enable hacker sync afterwards if they want the
+    // grid. (The user can re-enable colour sync afterwards if they want the
     // palette colour to take over again.)
     const next = {
       ...applyThemeValues(get().settings, theme),
-      hackerMode: "off" as const,
+      colorSyncMode: "off" as const,
     };
     setState({ settings: next });
     persist(next);

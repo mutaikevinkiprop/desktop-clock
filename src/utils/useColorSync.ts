@@ -1,61 +1,61 @@
 /**
- * `useHackerSync` - returns the hacker palette colour that should be applied
- * right now, or null when hacker sync is off.
+ * `useColorSync` - returns the sync palette colour that should be applied
+ * right now, or null when colour sync is off.
  *
  * Fully customisable:
  *   - "rotate": cycles through the active palette (classic presets or the
- *     user's own colour sequence) every `hackerRotateSeconds` seconds. With
+ *     user's own colour sequence) every `colorRotateSeconds` seconds. With
  *     the preset palette at 60s the flip stays aligned to the wall clock, so
- *     it changes at the same instant as the wallpaper.
+ *     the clock and the contribution grid change at the same instant.
  *   - "fixed" : a single pinned colour (a preset entry, or one of the user's
  *     custom colours); never changes.
  */
 
 import { useEffect, useRef, useState } from "react";
 import {
-  hackerColourAtIn,
-  hackerColourById,
-  hackerColourFromHex,
-  hackerPaletteFor,
+  colorAtIn,
+  classicColorById,
+  colorFromHex,
+  paletteFor,
   msUntilNextChangeFor,
-  type HackerColour,
-} from "./hackerPalette";
-import type { HackerMode, HackerPaletteSource } from "../types";
+  type PaletteColor,
+} from "./colorPalette";
+import type { ColorSyncMode, ColorPaletteSource } from "../types";
 
-export interface HackerSyncConfig {
-  hackerMode: HackerMode;
-  hackerPaletteSource: HackerPaletteSource;
-  hackerCustomColors: string[];
-  hackerFixedId: string;
-  hackerFixedColor: string;
-  hackerRotateSeconds: number;
+export interface ColorSyncConfig {
+  colorSyncMode: ColorSyncMode;
+  colorPaletteSource: ColorPaletteSource;
+  colorCustomColors: string[];
+  colorFixedId: string;
+  colorFixedColor: string;
+  colorRotateSeconds: number;
 }
 
-export function useHackerSync(config: HackerSyncConfig): HackerColour | null {
+export function useColorSync(config: ColorSyncConfig): PaletteColor | null {
   const {
-    hackerMode: mode,
-    hackerPaletteSource: source,
-    hackerCustomColors: customColors,
-    hackerFixedId: fixedId,
-    hackerFixedColor: fixedColor,
-    hackerRotateSeconds: rotateSeconds,
+    colorSyncMode: mode,
+    colorPaletteSource: source,
+    colorCustomColors: customColors,
+    colorFixedId: fixedId,
+    colorFixedColor: fixedColor,
+    colorRotateSeconds: rotateSeconds,
   } = config;
 
-  const palette = hackerPaletteFor(source, customColors);
+  const palette = paletteFor(source, customColors);
   const periodMs = Math.max(1_000, (rotateSeconds || 60) * 1_000);
   const active = mode !== "off";
 
-  const compute = (): HackerColour | null => {
+  const compute = (): PaletteColor | null => {
     if (!active) return null;
     if (mode === "fixed") {
       return source === "custom"
-        ? hackerColourFromHex(fixedColor || palette[0]!.text)
-        : hackerColourById(fixedId);
+        ? colorFromHex(fixedColor || palette[0]!.text)
+        : classicColorById(fixedId);
     }
-    return hackerColourAtIn(palette, Date.now(), periodMs);
+    return colorAtIn(palette, Date.now(), periodMs);
   };
 
-  const [colour, setColour] = useState<HackerColour | null>(compute);
+  const [colour, setColour] = useState<PaletteColor | null>(compute);
   const computeRef = useRef(compute);
   computeRef.current = compute;
 

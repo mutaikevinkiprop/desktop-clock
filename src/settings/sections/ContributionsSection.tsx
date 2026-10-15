@@ -11,7 +11,7 @@
 import { useState } from "react";
 import { useSettings } from "../../services/settingsStore";
 import { Panel, Row, Section, Slider, Toggle } from "../../components/Controls";
-import { HACKER_PALETTE } from "../../utils/hackerPalette";
+import { CLASSIC_PALETTE } from "../../utils/colorPalette";
 import { requestContribRefresh } from "../../services/trayEvents";
 import * as native from "../../services/native";
 
@@ -164,17 +164,17 @@ export default function ContributionsSection() {
         <Panel>
           <Row
             title="Theme source"
-            description="The grid always matches the clock's colour: the Hacker sync palette when it is on, otherwise the clock's theme text colour."
+            description="The grid always matches the clock's colour: the Colour sync palette when it is on, otherwise the clock's theme text colour."
           >
             <span style={{ fontSize: 12.5, color: "var(--ui-text-dim)" }}>
-              {settings.hackerMode === "rotate"
-                ? `Rotating every ${settings.hackerRotateSeconds}s`
-                : settings.hackerMode === "fixed"
+              {settings.colorSyncMode === "rotate"
+                ? `Rotating every ${settings.colorRotateSeconds}s`
+                : settings.colorSyncMode === "fixed"
                   ? `Fixed: ${
-                      settings.hackerPaletteSource === "custom"
-                        ? settings.hackerFixedColor
-                        : HACKER_PALETTE.find((c2) => c2.id === settings.hackerFixedId)?.name ??
-                          settings.hackerFixedId
+                      settings.colorPaletteSource === "custom"
+                        ? settings.colorFixedColor
+                        : CLASSIC_PALETTE.find((c2) => c2.id === settings.colorFixedId)?.name ??
+                          settings.colorFixedId
                     }`
                   : "Clock theme colour"}
             </span>
@@ -190,7 +190,7 @@ export default function ContributionsSection() {
                 window.dispatchEvent(new CustomEvent("navigate", { detail: "clock" }))
               }
             >
-              Go to Hacker sync
+              Go to Colour sync
             </button>
           </Row>
         </Panel>
