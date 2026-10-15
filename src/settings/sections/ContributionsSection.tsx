@@ -12,6 +12,7 @@ import { useState } from "react";
 import { useSettings } from "../../services/settingsStore";
 import { Panel, Row, Section, Slider, Toggle } from "../../components/Controls";
 import { HACKER_PALETTE } from "../../utils/hackerPalette";
+import { requestContribRefresh } from "../../services/trayEvents";
 import * as native from "../../services/native";
 
 export default function ContributionsSection() {
@@ -25,10 +26,9 @@ export default function ContributionsSection() {
   async function refreshNow() {
     setRefreshing(true);
     try {
-      // Nudging the username (no-op edit) makes the widget refetch, but a
-      // dedicated path is clearer: just toggle the source to itself.
-      patch({ source: c.source });
-      await new Promise((r) => setTimeout(r, 400));
+      // The widget lives in a separate WebView, so nudge it through a Tauri
+      // event instead of a (no-op) settings patch.
+      await requestContribRefresh();
     } finally {
       setTimeout(() => setRefreshing(false), 600);
     }

@@ -26,6 +26,20 @@ export async function broadcastSettings(): Promise<void> {
 }
 
 /**
+ * Ask the contribution widget window to refetch its live GitHub data now.
+ * The settings window and the widget are separate WebViews, so an in-process
+ * store update cannot reach the widget; it listens for this event instead.
+ */
+export async function requestContribRefresh(): Promise<void> {
+  if (!isTauri()) return;
+  try {
+    await emit("contrib://refresh", { at: Date.now() });
+  } catch {
+    /* best-effort */
+  }
+}
+
+/**
  * Subscribe to native tray/global events and cross-window settings broadcasts.
  * Safe to call in a browser (no-op). Returns an unsubscribe function.
  */

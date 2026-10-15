@@ -45,6 +45,22 @@ async function call<T>(cmd: string, args: Record<string, unknown> | undefined, f
   }
 }
 
+/**
+ * Like `call`, but Tauri IPC errors REJECT instead of being silently replaced
+ * with the fallback. Used where the caller must distinguish "no data" from
+ * "backend failed" - e.g. the contribution fetch keeps its last known-good
+ * graph on failure instead of swapping in the simulated fallback.
+ */
+async function callStrict<T>(
+  cmd: string,
+  args: Record<string, unknown> | undefined,
+  fallback: T,
+): Promise<T> {
+  const invoke = await getInvoke();
+  if (!invoke) return fallback; // plain browser: degraded mode
+  return invoke<T>(cmd, args);
+}
+
 // --- Widget visibility -----------------------------------------------------
 
 export const showWidget = () => call<void>("show_widget", undefined, undefined);
@@ -185,9 +201,13 @@ export interface ContributionGraph {
   days: ContributionDay[];
 }
 
-/** Fetch a GitHub user's contribution graph (public profiles, no auth). */
+/**
+ * Fetch a GitHub user's contribution graph (public profiles, no auth).
+ * Rejects when the backend reports an error so the caller can keep its last
+ * known-good graph and retry; returns `null` only in plain-browser mode.
+ */
 export const getContributions = (username: string) =>
-  call<ContributionGraph | null>("get_contributions", { username }, null);
+  callStrict<ContributionGraph | null>("get_contributions", { username }, null);
 
 // --- Window dragging -------------------------------------------------------
 

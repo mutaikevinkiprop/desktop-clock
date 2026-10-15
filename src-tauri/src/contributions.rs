@@ -106,16 +106,46 @@ fn longest_streak(days: &[ContributionDay]) -> u32 {
 }
 
 /// Current streak: consecutive contributing days ending on the last day.
+///
+/// A trailing zero day that is still *today* (UTC) has not been lost yet, so
+/// it does not break the streak - the same rule GitHub applies to profiles
+/// (your streak stays alive until the day actually ends).
 fn current_streak(days: &[ContributionDay]) -> u32 {
+    let today = utc_date_offset(0);
     let mut run = 0u32;
-    for d in days.iter().rev() {
+    for (i, d) in days.iter().rev().enumerate() {
         if d.count > 0 {
             run += 1;
+        } else if i == 0 && d.date == today {
+            // Today is still in progress; keep counting from yesterday.
+            continue;
         } else {
             break;
         }
     }
     run
+}
+
+/// UTC date `days_offset` days from today as "YYYY-MM-DD", computed with
+/// Howard Hinnant's civil-from-days algorithm (no external date crate).
+fn utc_date_offset(days_offset: i64) -> String {
+    let secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0);
+    let z = secs / 86_400 + days_offset + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z.rem_euclid(146_097); // [0, 146096]
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365; // [0, 399]
+    let mut y = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100); // [0, 365]
+    let mp = (5 * doy + 2) / 153; // [0, 11]
+    let d = doy - (153 * mp + 2) / 5 + 1; // [1, 31]
+    let m = if mp < 10 { mp + 3 } else { mp - 9 }; // [1, 12]
+    if m <= 2 {
+        y += 1;
+    }
+    format!("{y:04}-{m:02}-{d:02}")
 }
 
 /// Fetch a user's contribution graph. Blocking; call from a background thread.
@@ -132,7 +162,16 @@ pub fn fetch(username: &str) -> Result<ContributionGraph, String> {
         return Err("invalid username".into());
     }
 
-    let url = format!("https://github-contributions-api.jogruber.de/v4/{username}?y=last");
+    // Some intermediate caches key on the full URL. A cache-buster at
+    // 5-minute granularity caps how stale the data can be (GitHub updates the
+    // graph within minutes of a push) without hammering the upstream API.
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs() / 300)
+        .unwrap_or(0);
+    let url = format!(
+        "https://github-contributions-api.jogruber.de/v4/{username}?y=last&ts={ts}"
+    );
     let resp = ureq::get(&url)
         .set(
             "User-Agent",
@@ -211,5 +250,43 @@ mod tests {
         let g = normalise("someone", resp);
         assert_eq!(g.current_streak, 2);
         assert_eq!(g.longest_streak, 2);
+    }
+
+    #[test]
+    fn current_streak_treats_today_as_still_in_progress() {
+        // A zero-count day that is *today* (UTC) must not break the streak:
+        // the day is not over yet. GitHub shows the streak as alive until the
+        // day actually ends.
+        let today = utc_date_offset(0);
+        let yesterday = utc_date_offset(-1);
+        let day_before = utc_date_offset(-2);
+        let resp = ApiResponse {
+            contributions: vec![
+                ApiDay {
+                    date: day_before,
+                    count: 2,
+                    level: 1,
+                },
+                ApiDay {
+                    date: yesterday,
+                    count: 3,
+                    level: 2,
+                },
+                ApiDay {
+                    date: today,
+                    count: 0,
+                    level: 0,
+                },
+            ],
+        };
+        let g = normalise("someone", resp);
+        assert_eq!(g.current_streak, 2);
+        assert_eq!(g.longest_streak, 2);
+    }
+
+    #[test]
+    fn utc_dates_are_iso_ordered() {
+        assert!(utc_date_offset(-2) < utc_date_offset(-1));
+        assert!(utc_date_offset(-1) < utc_date_offset(0));
     }
 }

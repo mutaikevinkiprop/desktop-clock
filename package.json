@@ -1,7 +1,7 @@
 {
   "name": "desktop-clock",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.1.1",
   "type": "module",
   "description": "A polished, production-quality Windows desktop digital clock widget.",
   "license": "MIT",

@@ -21,6 +21,19 @@ import * as native from "../services/native";
 import type { ContributionGraph } from "../services/native";
 import { simulateGrid, totalOf, longestStreak } from "../utils/contributionGrid";
 
+// Retry bookkeeping for the live fetch. Module-level so `fetchData` keeps a
+// stable identity while the component re-renders.
+let contribRetryTimer: number | null = null;
+let contribRetryCount = 0;
+const MAX_CONTRIB_RETRIES = 6;
+
+function clearContribRetry() {
+  if (contribRetryTimer !== null) {
+    window.clearTimeout(contribRetryTimer);
+    contribRetryTimer = null;
+  }
+}
+
 export default function ContributionWidget() {
   const settings = useSettings((s) => s.settings);
   const loaded = useSettings((s) => s.loaded);
@@ -43,6 +56,7 @@ export default function ContributionWidget() {
   // --- Live data ------------------------------------------------------------
   const [graph, setGraph] = useState<ContributionGraph | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Headline figures: from the live graph when available, otherwise computed
   // from the same simulated grid the canvas draws (so the total is never "--").
@@ -54,16 +68,51 @@ export default function ContributionWidget() {
     return { total: totalOf(weeks), streak: longestStreak(weeks) };
   })();
 
+  // When the last fetch failed there is no real data to show: say so instead
+  // of silently presenting the simulated demo numbers as real ones.
+  const offlineHint =
+    c.source === "github" && error
+      ? graph
+        ? "offline \u00b7 retrying\u2026"
+        : "offline \u00b7 showing demo"
+      : null;
+
   const fetchData = useCallback(async () => {
     const cfg = useSettings.getState().settings.contributions;
     if (cfg.source !== "github" || !cfg.username) {
+      clearContribRetry();
+      contribRetryCount = 0;
       setGraph(null);
+      setError(null);
       return;
     }
     setLoading(true);
     try {
       const g = await native.getContributions(cfg.username);
-      setGraph(g);
+      if (g) {
+        setGraph(g);
+        setError(null);
+        contribRetryCount = 0;
+        return;
+      }
+      throw new Error("no contribution data returned");
+    } catch (err) {
+      // Keep the last known-good graph: a transient failure must never swap
+      // the user's REAL numbers for the simulated fallback. Retry with
+      // growing backoff instead of waiting for the next poll cycle.
+      console.error("[contributions] fetch failed:", err);
+      setError(err instanceof Error ? err.message : String(err));
+      const attempt = contribRetryCount;
+      contribRetryCount += 1;
+      clearContribRetry();
+      if (attempt < MAX_CONTRIB_RETRIES) {
+        const delays = [30_000, 60_000, 120_000, 300_000];
+        const delay = delays[Math.min(attempt, delays.length - 1)] ?? 300_000;
+        contribRetryTimer = window.setTimeout(() => {
+          contribRetryTimer = null;
+          void fetchData();
+        }, delay);
+      }
     } finally {
       setLoading(false);
     }
@@ -74,19 +123,72 @@ export default function ContributionWidget() {
     if (!loaded) return;
     const cfg = c;
     if (cfg.source !== "github" || !cfg.username) {
+      clearContribRetry();
+      contribRetryCount = 0;
       setGraph(null);
+      setError(null);
       return;
     }
+    // Drop the previous profile's numbers immediately: they must never show
+    // under the new handle while the fresh fetch is in flight.
+    clearContribRetry();
+    contribRetryCount = 0;
+    setGraph(null);
+    setError(null);
     const t = setTimeout(fetchData, 500);
     return () => clearTimeout(t);
   }, [loaded, c.source, c.username, fetchData]);
 
-  // Refresh hourly (GitHub updates a few times a day).
+  // Poll every 10 minutes so new contributions appear promptly. GitHub
+  // updates the graph within minutes of a push, and the backend's 5-minute
+  // cache-buster keeps upstream caches from serving older data.
   useEffect(() => {
     if (!loaded || c.source !== "github") return;
-    const id = setInterval(fetchData, 60 * 60 * 1000);
+    const id = setInterval(fetchData, 10 * 60 * 1000);
     return () => clearInterval(id);
   }, [loaded, c.source, fetchData]);
+
+  // Refetch when the widget becomes visible again (re-shown after being
+  // hidden, or the machine resumed from sleep) so it never sits visibly
+  // stale.
+  useEffect(() => {
+    if (!loaded) return;
+    const refreshIfVisible = () => {
+      if (document.hidden) return;
+      const cfg = useSettings.getState().settings.contributions;
+      if (cfg.source === "github" && cfg.username) void fetchData();
+    };
+    document.addEventListener("visibilitychange", refreshIfVisible);
+    window.addEventListener("focus", refreshIfVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", refreshIfVisible);
+      window.removeEventListener("focus", refreshIfVisible);
+    };
+  }, [loaded, fetchData]);
+
+  // Manual "Refresh now" from the settings window: the settings UI is a
+  // separate WebView, so the request arrives as a Tauri event.
+  useEffect(() => {
+    if (!native.isTauri()) return;
+    let disposed = false;
+    let unlisten: (() => void) | null = null;
+    void import("@tauri-apps/api/event")
+      .then(({ listen }) => listen("contrib://refresh", () => void fetchData()))
+      .then((un) => {
+        if (disposed) un();
+        else unlisten = un;
+      })
+      .catch(() => {
+        /* best-effort */
+      });
+    return () => {
+      disposed = true;
+      if (unlisten) unlisten();
+    };
+  }, [fetchData]);
+
+  // Never leak a pending retry timer when the widget unmounts.
+  useEffect(() => () => clearContribRetry(), []);
 
   // --- Startup fitting ------------------------------------------------------
   // The window is a fixed band that lives with the clock: fit it to the
@@ -125,7 +227,8 @@ export default function ContributionWidget() {
               {headline.total.toLocaleString()}
             </span>
             <span className="contrib-sub">
-              {headline.streak > 0 ? `best streak ${headline.streak}d` : "no contributions yet"}
+              {offlineHint ??
+                (headline.streak > 0 ? `best streak ${headline.streak}d` : "no contributions yet")}
             </span>
           </div>
         )}
